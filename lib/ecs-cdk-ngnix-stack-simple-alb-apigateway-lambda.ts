@@ -6,7 +6,7 @@ import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as path from "path";
-import { QSNetworkStack } from "../lib/qs-network-stack";
+import { QSNetworkStack } from "./qs-network-stack";
 
 export class EcsCdkNgnixStackSimple extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
