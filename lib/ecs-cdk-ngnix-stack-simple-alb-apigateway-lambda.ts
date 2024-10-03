@@ -38,7 +38,7 @@ export class EcsCdkNgnixStackSimple extends cdk.Stack {
     });
 
     const container = taskDefinition.addContainer("nginx", {
-      image: ecs.ContainerImage.fromRegistry("nginx:latest"),
+      image: ecs.ContainerImage.fromRegistry("870912676422.dkr.ecr.us-east-1.amazonaws.com/quickysoft/sample-spring-boot-app:latest"),
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "nginx" }),
       environment: {
         'DB_URL': 'db@serviceIP:onPort',

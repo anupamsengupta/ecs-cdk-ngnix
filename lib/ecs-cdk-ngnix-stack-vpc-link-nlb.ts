@@ -5,6 +5,9 @@ import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import { QSNetworkStack } from "./qs-network-stack";
+import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery'; // Import Cloud Map
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as ecr from 'aws-cdk-lib/aws-ecr';  // Import ECR repository
 
 export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -29,6 +32,12 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
       vpc: vpc,
     });
 
+    // Create a Cloud Map namespace for service discovery
+    const cloudmapNamespace = new servicediscovery.PrivateDnsNamespace(this, 'Namespace', {
+      name: 'ecsnamespace',
+      vpc: vpc
+    });
+
     // Create a security group for the ECS service
     const ecsSecurityGroup = new ec2.SecurityGroup(this, "EcsSecurityGroup", {
       vpc,
@@ -39,56 +48,54 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
     // Allow inbound traffic from the NLB on port 80
     ecsSecurityGroup.addIngressRule(
       ec2.Peer.ipv4(vpc.vpcCidrBlock),
-      ec2.Port.tcp(80),
+      ec2.Port.tcp(8080),
       "Allow traffic from NLB"
     );
 
-    // Create a Fargate task definition
-    const nginixTaskDefinition = new ecs.FargateTaskDefinition(
-      this,
-      "TaskDef",
-      {
-        memoryLimitMiB: 512,
-        cpu: 256,
-      }
+    ecsSecurityGroup.addIngressRule(
+      ec2.Peer.ipv4(vpc.vpcCidrBlock),
+      ec2.Port.tcp(8081),
+      "Allow traffic from NLB"
     );
 
-    const nginxContainer = nginixTaskDefinition.addContainer("nginx", {
-      image: ecs.ContainerImage.fromRegistry("nginx:latest"),
-      logging: ecs.LogDrivers.awsLogs({ streamPrefix: "nginx" }),
-      environment: {
-        DB_URL: "db@serviceIP:onPort",
-        secretsmanagerkey: "secretsmanagerkey_value",
-      },
+    /*
+    const externalEcrImage = ecs.ContainerImage.fromRegistry(
+      '870912676422.dkr.ecr.us-east-1.amazonaws.com/quickysoft/sample-spring-boot-app:latest');
+    */
+
+    const privateEcrRepo = ecr.Repository.fromRepositoryName(
+      this, 
+      'privateEcrRepo', 
+      'quickysoft/sample-spring-boot-app');
+
+    // Task Execution Role with AmazonECSTaskExecutionRolePolicy attached
+    const taskExecutionRole = new iam.Role(this, 'TaskExecutionRole', {
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
     });
 
-    nginxContainer.addPortMappings({
-      containerPort: 80,
-    });
-
-    // Create a Fargate service
-    const nginxService = new ecs.FargateService(this, "Service", {
-      cluster,
-      taskDefinition: nginixTaskDefinition,
-      desiredCount: 1,
-      securityGroups: [ecsSecurityGroup],
-    });
+    // Attach AmazonECSTaskExecutionRolePolicy for ECR image pull permissions
+    taskExecutionRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonECSTaskExecutionRolePolicy')
+    );
 
     // Create a Fargate task definition for Backend
     const backendTaskDefinition = new ecs.FargateTaskDefinition(
       this,
-      "BackendTaskDef",
+      "backendTaskDef",
       {
         memoryLimitMiB: 512,
         cpu: 256,
+        executionRole: taskExecutionRole // Set execution role for ECR pull
       }
     );
 
     const backendContainer = backendTaskDefinition.addContainer("backend", {
-      image: ecs.ContainerImage.fromRegistry("amazonlinux:2"),
+      image: ecs.ContainerImage.fromEcrRepository(privateEcrRepo, 'latest'), // Specify tag if needed
+      //image: externalEcrImage,
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "backend" }),
       environment: {
-        NGINX_SERVICE_URL: `http://${nginxService.serviceName}`,
+        DB_URL: "db@serviceIP:onPort",
+        secretsmanagerkey: "secretsmanagerkey_value",
       },
     });
 
@@ -101,7 +108,49 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
       cluster,
       taskDefinition: backendTaskDefinition,
       desiredCount: 1,
+      cloudMapOptions: {
+        name: 'backend-api',
+        cloudMapNamespace: cloudmapNamespace
+      },
     });
+
+
+      // Create a Fargate task definition
+    const frontendTaskDefinition = new ecs.FargateTaskDefinition(
+      this,
+      "frontendTaskDef",
+      {
+        memoryLimitMiB: 512,
+        cpu: 256,
+        executionRole: taskExecutionRole // Set execution role for ECR pull
+      },
+    );
+
+    const frontendAppContainer = frontendTaskDefinition.addContainer("sampleSBApp", {
+      image: ecs.ContainerImage.fromEcrRepository(privateEcrRepo, 'latest'), // Specify tag if needed
+      //image: externalEcrImage,
+      logging: ecs.LogDrivers.awsLogs({ streamPrefix: "frontend" }),
+      environment: {
+        EXTERNAL_GET_URL: `http://backend-api.ecsnamespace/api/get-external-data`,
+      },
+    });
+
+    frontendAppContainer.addPortMappings({
+      containerPort: 8081,
+    });
+
+    // Create a Fargate service
+    const frontendAppService = new ecs.FargateService(this, "Service", {
+      cluster,
+      taskDefinition: frontendTaskDefinition,
+      desiredCount: 1,
+      securityGroups: [ecsSecurityGroup],
+      cloudMapOptions: {
+        name: 'frontend-api',
+        cloudMapNamespace: cloudmapNamespace
+      },
+    });
+
 
     const nlb = new elbv2.NetworkLoadBalancer(this, "LB", {
       vpc,
@@ -113,8 +162,8 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
     });
 
     listener.addTargets("ECS", {
-      port: 80,
-      targets: [nginxService],
+      port: 8081,
+      targets: [frontendAppService],
       //preserveClientIp: true,
     });
 
@@ -141,11 +190,20 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
     });
 
     // Create REST resources
-    const guestResource = api.root.addResource("guest");
-    const addressResource = api.root.addResource("address");
+    const apiResource = api.root.addResource("api");
+    const greetResource = apiResource.addResource("greet");
+    const externalApiResource = apiResource.addResource("external-api");
+    const getExternalApiResource = apiResource.addResource("get-external-data");
 
-    guestResource.addMethod("GET", integration);
-    addressResource.addMethod("GET", integration);
+    const actuatorResource = api.root.addResource("actuator");
+    const healthResource = api.root.addResource("health");
+
+    greetResource.addMethod("GET", integration);
+    externalApiResource.addMethod("GET", integration);
+    getExternalApiResource.addMethod("GET", integration);
+
+    actuatorResource.addMethod("GET", integration);
+    healthResource.addMethod("GET", integration);
 
     // Add a root resource level health check
 
