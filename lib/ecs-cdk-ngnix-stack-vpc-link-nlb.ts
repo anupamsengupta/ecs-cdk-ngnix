@@ -52,11 +52,6 @@ export class EcsCdkSpringBootAppStackVPCLinkAndNLB extends cdk.Stack {
       "Allow traffic from NLB"
     );
 
-    /*
-    const externalEcrImage = ecs.ContainerImage.fromRegistry(
-      '870912676422.dkr.ecr.us-east-1.amazonaws.com/quickysoft/sample-spring-boot-app:latest');
-    */
-
     const privateEcrRepo = ecr.Repository.fromRepositoryName(
       this, 
       'privateEcrRepo', 
@@ -85,7 +80,6 @@ export class EcsCdkSpringBootAppStackVPCLinkAndNLB extends cdk.Stack {
 
     const backendContainer = backendTaskDefinition.addContainer("backend", {
       image: ecs.ContainerImage.fromEcrRepository(privateEcrRepo, 'latest'), // Specify tag if needed
-      //image: externalEcrImage,
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "backend" }),
       environment: {
         DB_URL: "db@serviceIP:onPort",
@@ -123,7 +117,6 @@ export class EcsCdkSpringBootAppStackVPCLinkAndNLB extends cdk.Stack {
 
     const frontendAppContainer = frontendTaskDefinition.addContainer("FrontendService", {
       image: ecs.ContainerImage.fromEcrRepository(privateEcrRepo, 'latest'), // Specify tag if needed
-      //image: externalEcrImage,
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "frontend" }),
       environment: {
         EXTERNAL_GET_URL: `http://backendapi.ecsnamespace/api/get-external-data`,
