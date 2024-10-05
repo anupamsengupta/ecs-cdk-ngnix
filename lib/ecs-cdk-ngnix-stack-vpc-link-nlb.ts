@@ -121,7 +121,7 @@ export class EcsCdkSpringBootAppStackVPCLinkAndNLB extends cdk.Stack {
       },
     );
 
-    const frontendAppContainer = frontendTaskDefinition.addContainer("sampleSBApp", {
+    const frontendAppContainer = frontendTaskDefinition.addContainer("FrontendService", {
       image: ecs.ContainerImage.fromEcrRepository(privateEcrRepo, 'latest'), // Specify tag if needed
       //image: externalEcrImage,
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "frontend" }),
@@ -176,8 +176,8 @@ export class EcsCdkSpringBootAppStackVPCLinkAndNLB extends cdk.Stack {
     // Create GET methods with VPC Link integration for each resource
     const integration = new apigateway.Integration({
       type: apigateway.IntegrationType.HTTP_PROXY,
-      integrationHttpMethod: "GET",
-      uri: `http://${nlb.loadBalancerDnsName}`,
+      integrationHttpMethod: "ANY",
+      uri: `http://${nlb.loadBalancerDnsName}/{proxy}`,
       options: {
         connectionType: apigateway.ConnectionType.VPC_LINK,
         vpcLink,
@@ -185,6 +185,7 @@ export class EcsCdkSpringBootAppStackVPCLinkAndNLB extends cdk.Stack {
     });
 
     // Create REST resources
+    /*
     const apiResource = api.root.addResource("api");
     const greetResource = apiResource.addResource("greet");
     const externalApiResource = apiResource.addResource("external-api");
@@ -199,21 +200,28 @@ export class EcsCdkSpringBootAppStackVPCLinkAndNLB extends cdk.Stack {
 
     actuatorResource.addMethod("GET", integration);
     healthResource.addMethod("GET", integration);
+    */
 
     // Add a root resource level health check
-    /*
     const rootIntegration = new apigateway.Integration({
       type: apigateway.IntegrationType.HTTP_PROXY,
-      integrationHttpMethod: "GET",
-      uri: `http://${nlb.loadBalancerDnsName}`,
+      integrationHttpMethod: "ANY",
+      uri: `http://${nlb.loadBalancerDnsName}/{proxy}`,
       options: {
         connectionType: apigateway.ConnectionType.VPC_LINK,
         vpcLink,
+        passthroughBehavior: apigateway.PassthroughBehavior.WHEN_NO_MATCH,
+        requestParameters: {
+          'integration.request.path.proxy': 'method.request.path.proxy'  // Pass the path to NLB
+        }
       },
     });
 
-    api.root.addMethod("GET", rootIntegration);
-    */
+    api.root.addResource('{proxy+}').addMethod('ANY', rootIntegration, {
+      requestParameters: {
+        'method.request.path.proxy': true  // Enable path proxying
+      }
+    });
 
     new cdk.CfnOutput(this, "LoadBalancerDNS", {
       value: nlb.loadBalancerDnsName,
