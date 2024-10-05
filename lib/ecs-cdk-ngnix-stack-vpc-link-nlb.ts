@@ -9,14 +9,14 @@ import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery'; // Import 
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ecr from 'aws-cdk-lib/aws-ecr';  // Import ECR repository
 
-export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
+export class EcsCdkSpringBootAppStackVPCLinkAndNLB extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     // Create a VPC and overall network
     const networkClusterStack = new QSNetworkStack(
       scope,
-      "ecsNetworkClusterStackName",
+      "ecsNetworkStackName1",
       {
         env: {
           region: "us-east-1",
@@ -48,13 +48,7 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
     // Allow inbound traffic from the NLB on port 80
     ecsSecurityGroup.addIngressRule(
       ec2.Peer.ipv4(vpc.vpcCidrBlock),
-      ec2.Port.tcp(8080),
-      "Allow traffic from NLB"
-    );
-
-    ecsSecurityGroup.addIngressRule(
-      ec2.Peer.ipv4(vpc.vpcCidrBlock),
-      ec2.Port.tcp(8081),
+      ec2.Port.tcp(80),
       "Allow traffic from NLB"
     );
 
@@ -100,7 +94,7 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
     });
 
     backendContainer.addPortMappings({
-      containerPort: 8080,
+      containerPort: 80,
     });
 
     // Create a Fargate service for Backend
@@ -108,8 +102,9 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
       cluster,
       taskDefinition: backendTaskDefinition,
       desiredCount: 1,
+      securityGroups: [ecsSecurityGroup],
       cloudMapOptions: {
-        name: 'backend-api',
+        name: 'backendapi',
         cloudMapNamespace: cloudmapNamespace
       },
     });
@@ -131,12 +126,12 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
       //image: externalEcrImage,
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "frontend" }),
       environment: {
-        EXTERNAL_GET_URL: `http://backend-api.ecsnamespace/api/get-external-data`,
+        EXTERNAL_GET_URL: `http://backendapi.ecsnamespace/api/get-external-data`,
       },
     });
 
     frontendAppContainer.addPortMappings({
-      containerPort: 8081,
+      containerPort: 80,
     });
 
     // Create a Fargate service
@@ -146,7 +141,7 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
       desiredCount: 1,
       securityGroups: [ecsSecurityGroup],
       cloudMapOptions: {
-        name: 'frontend-api',
+        name: 'frontendapi',
         cloudMapNamespace: cloudmapNamespace
       },
     });
@@ -161,8 +156,8 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
       port: 80,
     });
 
-    listener.addTargets("ECS", {
-      port: 8081,
+    listener.addTargets("EcsTg", {
+      port: 80,
       targets: [frontendAppService],
       //preserveClientIp: true,
     });
@@ -174,8 +169,8 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
 
     // Create an API Gateway
     const api = new apigateway.RestApi(this, "ApiGateway", {
-      restApiName: "NginxServiceApi",
-      description: "API Gateway to access Nginx service running on ECS Fargate",
+      restApiName: "FrontEndSpringBootAppServiceApi",
+      description: "API Gateway to access SpringBootApp service running on ECS Fargate",
     });
 
     // Create GET methods with VPC Link integration for each resource
@@ -196,7 +191,7 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
     const getExternalApiResource = apiResource.addResource("get-external-data");
 
     const actuatorResource = api.root.addResource("actuator");
-    const healthResource = api.root.addResource("health");
+    const healthResource = actuatorResource.addResource("health");
 
     greetResource.addMethod("GET", integration);
     externalApiResource.addMethod("GET", integration);
@@ -206,7 +201,7 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
     healthResource.addMethod("GET", integration);
 
     // Add a root resource level health check
-
+    /*
     const rootIntegration = new apigateway.Integration({
       type: apigateway.IntegrationType.HTTP_PROXY,
       integrationHttpMethod: "GET",
@@ -218,6 +213,7 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
     });
 
     api.root.addMethod("GET", rootIntegration);
+    */
 
     new cdk.CfnOutput(this, "LoadBalancerDNS", {
       value: nlb.loadBalancerDnsName,

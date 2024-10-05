@@ -8,14 +8,14 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as path from "path";
 import { QSNetworkStack } from "./qs-network-stack";
 
-export class EcsCdkNgnixStackSimple extends cdk.Stack {
+export class EcsCdkSpringBootAppStackSimple extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     // Create a VPC and overall network
     const networkClusterStack = new QSNetworkStack(
       scope,
-      "ecsNetworkClusterStackName",
+      "ecsNetworkStackName1",
       {
         env: {
           region: "us-east-1",
