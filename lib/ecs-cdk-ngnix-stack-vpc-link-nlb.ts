@@ -69,7 +69,7 @@ export class EcsCdkSpringBootAppStackVPCLinkAndNLB extends cdk.Stack {
 
     // Attach AmazonECSTaskExecutionRolePolicy for ECR image pull permissions
     taskExecutionRole.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonECSTaskExecutionRolePolicy')
+      iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonECS_FullAccess')
     );
 
     // Create a Fargate task definition for Backend
