@@ -135,7 +135,7 @@ export class EcsCdkSpringBootAppStackVPCLinkAndNLB extends cdk.Stack {
     });
 
     // Create a Fargate service
-    const frontendAppService = new ecs.FargateService(this, "Service", {
+    const frontendAppService = new ecs.FargateService(this, "FrontendService", {
       cluster,
       taskDefinition: frontendTaskDefinition,
       desiredCount: 1,
