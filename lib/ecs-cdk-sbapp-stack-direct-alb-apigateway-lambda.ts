@@ -1,3 +1,4 @@
+import * as path from "path";
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
@@ -5,11 +6,13 @@ import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as lambda from "aws-cdk-lib/aws-lambda";
-import * as path from "path";
-import { QSNetworkStack } from "./qs-network-stack";
 import * as ecr from 'aws-cdk-lib/aws-ecr';  // Import ECR repository
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery'; // Import Cloud Map
+
+import { QSNetworkStack } from "./qs-network-stack";
+import { QSClusterMain } from "./qs-ecs-cluster";
+
 
 export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -17,7 +20,7 @@ export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
     const lambdaTimeoutSeconds = 15; //TO-DO need to go to props
 
     // Create a VPC and overall network
-    const networkClusterStack = new QSNetworkStack(
+    const clusterNetworkStack = new QSNetworkStack(
       scope,
       "ecsNetworkStackName1",
       {
@@ -28,52 +31,33 @@ export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
         azs: ["us-east-1a", "us-east-1b"],
       }
     );
-    const vpc: ec2.IVpc = networkClusterStack.network.vpc;
+    const vpc: ec2.IVpc = clusterNetworkStack.network.vpc;
+    const ecsSecurityGroup = clusterNetworkStack.network.preconfiguredVpcCidrAccessHttpSecurityGroup;
 
-    // Create a Cloud Map namespace for service discovery
-    const springbootAppNamespace = new servicediscovery.PrivateDnsNamespace(
+    //Create the cluster, roles and namespaces
+    const clusterConstruct = new QSClusterMain(
       this,
-      "springBootAppSharedPrivateNamespace",
-      {
-        name: "springBootAppSharedPrivateNamespace",
-        vpc: vpc,
+      'sbAppCluster', {
+        network: clusterNetworkStack.network,
+        stackName: 'sbApp',
+        serviceDiscoveryNamespace: 'springBootAppSharedPrivateNamespace',
       }
     );
 
+    // Create a Cloud Map namespace for service discovery
+    const springbootAppNamespace = clusterConstruct.appNamespace;
+
     // Create an ECS cluster
-    const cluster = new ecs.Cluster(this, "Test-ECS-Cluster", {
-      vpc: vpc,
-    });
+    const cluster = clusterConstruct.cluster;
 
-    // Create a security group for the ECS service
-    const ecsSecurityGroup = new ec2.SecurityGroup(this, "EcsSecurityGroup", {
-      vpc,
-      description: "Allow traffic from NLB",
-      allowAllOutbound: true,
-    });
+    // Task Execution Role with AmazonECSTaskExecutionRolePolicy attached
+    const taskExecutionRole = clusterConstruct.taskExecutionRole;
 
-    // Allow inbound traffic from the NLB on port 80
-    ecsSecurityGroup.addIngressRule(
-      ec2.Peer.ipv4(vpc.vpcCidrBlock),
-      ec2.Port.tcp(80),
-      "Allow traffic from NLB"
-    );
-
-    const privateEcrRepo = ecr.Repository.fromRepositoryName(
+    const privateEcrRepo = clusterConstruct.getRepo(
       this,
       "privateEcrRepo",
       "quickysoft/sample-spring-boot-app"
     );
-
-    // Task Execution Role with AmazonECSTaskExecutionRolePolicy attached
-    const taskExecutionRole = new iam.Role(this, "TaskExecutionRole", {
-      assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
-    });
-    // Attach AmazonECSTaskExecutionRolePolicy for ECR image pull permissions
-    taskExecutionRole.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonECS_FullAccess")
-    );
-
 
     // Create a Fargate task definition for Backend
     const backendTaskDefinition = new ecs.FargateTaskDefinition(
