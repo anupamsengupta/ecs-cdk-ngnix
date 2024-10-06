@@ -6,7 +6,7 @@ import * as cdk from 'aws-cdk-lib';
 import { EcsCdkSBAppDirectStackSimple } from '../lib/ecs-cdk-sbapp-stack-direct-alb-apigateway-lambda';
 
 const app = new cdk.App();
-new EcsCdkSBAppDirectStackSimple(app, 'ecsCdkSBAppDirectStackSimple2', {
+new EcsCdkSBAppDirectStackSimple(app, 'ecsCdkSBAppDirectStackSimple1', {
   env : {region : 'us-east-1'}
 });
 app.synth();

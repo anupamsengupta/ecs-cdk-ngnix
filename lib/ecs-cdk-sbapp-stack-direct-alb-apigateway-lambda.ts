@@ -69,6 +69,10 @@ export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
     const taskExecutionRole = new iam.Role(this, "TaskExecutionRole", {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
     });
+    // Attach AmazonECSTaskExecutionRolePolicy for ECR image pull permissions
+    taskExecutionRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonECS_FullAccess")
+    );
 
 
     // Create a Fargate task definition for Backend
@@ -86,7 +90,7 @@ export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
       "backendContainer",
       {
         image: ecs.ContainerImage.fromEcrRepository(privateEcrRepo, "latest"), // Specify tag if needed
-        logging: ecs.LogDrivers.awsLogs({ streamPrefix: "BackendContainer" }),
+        logging: ecs.LogDrivers.awsLogs({ streamPrefix: "backendContainer" }),
         environment: {
           DB_URL: "db@serviceIP:onPort",
           secretsmanagerkey: "secretsmanagerkey_value",
@@ -97,7 +101,7 @@ export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
     );
 
     // Create a Fargate service for Backend
-    const backendService = new ecs.FargateService(this, "BackendService", {
+    const backendService = new ecs.FargateService(this, "backendService", {
       cluster,
       taskDefinition: backendTaskDefinition,
       desiredCount: 1,
@@ -108,11 +112,6 @@ export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
       },
     });
 
-
-    // Attach AmazonECSTaskExecutionRolePolicy for ECR image pull permissions
-    taskExecutionRole.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonECS_FullAccess")
-    );
 
     // Create a Fargate task definition - sbapp-1
     const sbapp1TaskDefinition = new ecs.FargateTaskDefinition(this, "sbapp1TaskDef", {
@@ -185,7 +184,7 @@ export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
     });
 
     // Create an Application Load Balancer (ALB)
-    const sbappAlb = new elbv2.ApplicationLoadBalancer(this, "LB", {
+    const sbappAlb = new elbv2.ApplicationLoadBalancer(this, "sbappAlb", {
       vpc,
       internetFacing: false,
     });
@@ -196,31 +195,33 @@ export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
     });
 
     // Attach the ECS service to the ALB
-    listener.addTargets("defaultECS", {
+    listener.addTargets("defaultBackendECS", {
       port: 80,
-      targets: [sbapp1Service],
+      targets: [backendService],
       healthCheck: {
         interval: cdk.Duration.seconds(10),
-        path: "/sbappx1/actuator/health",
+        path: "/backend/actuator/health",
         timeout: cdk.Duration.seconds(5),
       },
     });
+    
     listener.addTargets("sbapp1ECS", {
       port: 80,
       targets: [sbapp1Service],
-      conditions: [elbv2.ListenerCondition.pathPatterns(['/sbappx1/*'])],
-      priority: 1,
+      conditions: [elbv2.ListenerCondition.pathPatterns(['/sbappx1*'])],
+      priority: 2,
       healthCheck: {
         interval: cdk.Duration.seconds(10),
         path: "/sbappx1/actuator/health",
         timeout: cdk.Duration.seconds(5),
       },
     });
+
     listener.addTargets("sbapp2ECS", {
       port: 80,
       targets: [sbapp2Service],
-      conditions: [elbv2.ListenerCondition.pathPatterns(['/sbappx2/*'])],
-      priority: 2,
+      conditions: [elbv2.ListenerCondition.pathPatterns(['/sbappx2*'])],
+      priority: 3,
       healthCheck: {
         interval: cdk.Duration.seconds(10),
         path: "/sbappx2/actuator/health",
