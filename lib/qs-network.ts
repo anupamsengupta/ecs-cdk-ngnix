@@ -14,7 +14,10 @@ export interface IQSNetwork {
     /**
      * Security group to be used by RDS databases and tools that need to work with them
      */
-    preconfiguredSecurityGroup: ec2.ISecurityGroup;
+    readonly preconfiguredNoAccessSecurityGroup: ec2.ISecurityGroup;
+    readonly preconfiguredVpcCidrAccessHttpSecurityGroup: ec2.ISecurityGroup;
+    readonly preconfiguredVpcCidrAccessHTTPSSecurityGroup: ec2.ISecurityGroup;
+
     publicInfraSubnets(): ec2.ISubnet[];
     privateInfraSubnets(): ec2.ISubnet[];
 }
@@ -24,7 +27,10 @@ abstract class QSNetworkBase extends Construct implements IQSNetwork {
     private readonly stackName: string;
 
     public abstract readonly vpc: ec2.IVpc;
-    public abstract readonly preconfiguredSecurityGroup: ec2.ISecurityGroup;
+    public abstract readonly preconfiguredNoAccessSecurityGroup: ec2.ISecurityGroup;
+    public abstract readonly preconfiguredVpcCidrAccessHttpSecurityGroup: ec2.ISecurityGroup;
+    public abstract readonly preconfiguredVpcCidrAccessHTTPSSecurityGroup: ec2.ISecurityGroup;
+
 
     public constructor(scope: Construct, id: string, stackName: string) {
         super(scope, id);
@@ -56,7 +62,9 @@ abstract class QSNetworkBase extends Construct implements IQSNetwork {
 export class QSNetworkMain extends QSNetworkBase {
 
     public readonly vpc: ec2.IVpc;
-    public readonly preconfiguredSecurityGroup: ec2.ISecurityGroup;
+    public readonly preconfiguredNoAccessSecurityGroup: ec2.ISecurityGroup;
+    public readonly preconfiguredVpcCidrAccessHttpSecurityGroup: ec2.ISecurityGroup;
+    public readonly preconfiguredVpcCidrAccessHTTPSSecurityGroup: ec2.ISecurityGroup;
 
     public constructor(scope: Construct, id: string, props: QSNetworkProps) {
         super(scope, id, props.stackName);
@@ -90,12 +98,39 @@ export class QSNetworkMain extends QSNetworkBase {
                 }
             }
         });
-        this.preconfiguredSecurityGroup = new ec2.SecurityGroup(this, `${props.stackName}-Default-SG`, {
+
+        //Setup security groups
+        this.preconfiguredNoAccessSecurityGroup = new ec2.SecurityGroup(this, `${props.stackName}-Default-NO-Access-SG`, {
             vpc: this.vpc,
-            securityGroupName: `${props.stackName}-Default-SG`,
-            allowAllOutbound: false,
-            description: "Default SG for all "
+            securityGroupName: `${props.stackName}-Default-NO-Access-SG`,
+            allowAllOutbound: false, //no outside and inside access
+            description: "Default-NO-Access-SG"
         });
+
+        this.preconfiguredVpcCidrAccessHttpSecurityGroup = new ec2.SecurityGroup(this, `${props.stackName}-Default-HTTP-Access-SG`, {
+            vpc: this.vpc,
+            securityGroupName: `${props.stackName}-Default-HTTP-Access-SG`,
+            allowAllOutbound: true, //oubound access allowed - Inbound access allowed at 80
+            description: "Default-HTTP-Access-SG"
+        });
+        this.preconfiguredVpcCidrAccessHttpSecurityGroup.addIngressRule(
+            ec2.Peer.ipv4(this.vpc.vpcCidrBlock),
+            ec2.Port.tcp(80),
+            "Allow traffic from NLB"
+          );
+
+        this.preconfiguredVpcCidrAccessHTTPSSecurityGroup = new ec2.SecurityGroup(this, `${props.stackName}-Default-HTTPS-Access-SG`, {
+            vpc: this.vpc,
+            securityGroupName: `${props.stackName}-Default-HTTPS-Access-SG`,
+            allowAllOutbound: true, //oubound access allowed - Inbound access allowed at 443
+            description: "Default-HTTPS-Access-SG"
+        });
+        this.preconfiguredVpcCidrAccessHTTPSSecurityGroup.addIngressRule(
+            ec2.Peer.ipv4(this.vpc.vpcCidrBlock),
+            ec2.Port.tcp(443),
+            "Allow traffic from NLB"
+        );
+
 
         this.privateInfraSubnets().forEach(subnet => {
             Tags.of(subnet).add("ecsNetworkCluster/subnet-usage", "infrastructure");
@@ -113,7 +148,9 @@ export class QSNetworkMain extends QSNetworkBase {
 class LookedUpNetwork extends QSNetworkBase {
 
     public readonly vpc: ec2.IVpc;
-    public readonly preconfiguredSecurityGroup: ec2.ISecurityGroup;
+    public readonly preconfiguredNoAccessSecurityGroup: ec2.ISecurityGroup;
+    public readonly preconfiguredVpcCidrAccessHttpSecurityGroup: ec2.ISecurityGroup;
+    public readonly preconfiguredVpcCidrAccessHTTPSSecurityGroup: ec2.ISecurityGroup;
 
     constructor(scope: Construct, id: string, stackName: string, vpcId: string) {
         super(scope, id, stackName);
@@ -121,7 +158,11 @@ class LookedUpNetwork extends QSNetworkBase {
         this.vpc = ec2.Vpc.fromLookup(this, `${stackName}-VPC`, {
             vpcId: vpcId
         });
-        this.preconfiguredSecurityGroup = ec2.SecurityGroup.fromLookupByName(this, `${stackName}-Default-SG`,
-            `${stackName}-Default-SG`, this.vpc);
+        this.preconfiguredNoAccessSecurityGroup = ec2.SecurityGroup.fromLookupByName(this, `${stackName}-Default-NO-Access-SG`,
+            `${stackName}-Default-NO-Access-SG`, this.vpc);
+        this.preconfiguredVpcCidrAccessHttpSecurityGroup = ec2.SecurityGroup.fromLookupByName(this, `${stackName}-Default-HTTP-Access-SG`,
+                `${stackName}-Default-HTTP-Access-SG`, this.vpc);
+        this.preconfiguredVpcCidrAccessHTTPSSecurityGroup = ec2.SecurityGroup.fromLookupByName(this, `${stackName}-Default-HTTPS-Access-SG`,
+                    `${stackName}-Default-HTTPS-Access-SG`, this.vpc);
     }
 }
