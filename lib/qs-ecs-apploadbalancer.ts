@@ -60,6 +60,7 @@ export class QSAppLoadBalancerMain
         open: props.open,
       }
     );
+    console.log('this.appAlb : ' + this.appAlb);
     this.priority = 1;
   }
 
@@ -73,6 +74,8 @@ export class QSAppLoadBalancerMain
   ) : elbv2.ApplicationTargetGroup {
     // Attach the ECS service to the ALB
     let  appTragetGroup;
+    console.log('this.appAlb : ' + this.appAlb);
+    console.log('this.applicationListener : ' + this.applicationListener);
     if(defaultTarget) {
       appTragetGroup = this.applicationListener.addTargets(taskname + 'ListenerTarget', {
         port: port,
@@ -96,6 +99,7 @@ export class QSAppLoadBalancerMain
         },
       });
     }
+    console.log('appTragetGroup : ' + appTragetGroup);
     return appTragetGroup;
   }
 }
