@@ -127,13 +127,13 @@ export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
       this,
       this.stackName, {
         stackName: this.stackName,
-        network: clusterNetworkStack.network, 
+        vpc: vpc, 
         internetFacing: false,
         port: 80,
         open: true,
+        securityGroup: ecsSecurityGroup,
       }
     );
-    
     appLoadBalancerConstruct.addListenerTarget(
       'backend',
       80,
@@ -147,16 +147,16 @@ export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
       80,
       30,
       5,
-      backendTask.service,
-      true,
+      frontendTask1.service,
+      false,
     );
     appLoadBalancerConstruct.addListenerTarget(
       'sbapp2',
       80,
       30,
       5,
-      backendTask.service,
-      true,
+      frontendTask2.service,
+      false,
     );
 
     // Create a Lambda function to integrate with API Gateway

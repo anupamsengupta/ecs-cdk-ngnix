@@ -3,13 +3,15 @@ import * as ecs from "aws-cdk-lib/aws-ecs";
 import { IQSNetwork } from "./qs-network";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as cdk from "aws-cdk-lib";
+import { ISecurityGroup, IVpc } from "aws-cdk-lib/aws-ec2";
 
 export interface QSAppLoadBalancerProps {
   stackName: string;
-  network: IQSNetwork;
+  vpc: IVpc;
   internetFacing: boolean;
   port: number;
   open: boolean;
+  securityGroup: ISecurityGroup;
 }
 
 export interface IQSAppLoadBalancer {
@@ -45,9 +47,10 @@ export class QSAppLoadBalancerMain
       this,
       props.stackName + "Alb",
       {
-        vpc: props.network.vpc,
+        vpc: props.vpc,
         internetFacing: props.internetFacing,
-      }
+        securityGroup: props.securityGroup,
+      },
     );
 
     this.applicationListener = this.appAlb.addListener(

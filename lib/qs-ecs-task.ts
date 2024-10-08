@@ -66,7 +66,7 @@ export class QSTaskMain extends Construct implements IQSTask {
     );
 
     // Create a Fargate service for Backend
-    const backendService = new ecs.FargateService(this, props.taskName + "Service", {
+    this.service = new ecs.FargateService(this, props.taskName + "Service", {
       cluster: props.cluster,
       taskDefinition: backendServiceTaskDefinition,
       desiredCount: 1,
