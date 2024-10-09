@@ -95,8 +95,8 @@ export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
         serviceDiscoveryNamespace: springbootAppNamespace,
         DB_URL: "db@serviceIP:onPort",
         secretsmanagerkey: "secretsmanagerkey_value",
-        EXTERNAL_GET_URL1: `http://backendapi.springBootAppSharedPrivateNamespace/backend/api/external-api`,
-        EXTERNAL_GET_URL2: `http://backendapi.springBootAppSharedPrivateNamespace/backend/api/greet`,
+        EXTERNAL_GET_URL1: `http://backendapi.sbApp-springBootAppSharedPrivateNamespace/backend/api/external-api`,
+        EXTERNAL_GET_URL2: `http://backendapi.sbApp-springBootAppSharedPrivateNamespace/backend/api/greet`,
       }
     );
 
@@ -118,8 +118,8 @@ export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
         serviceDiscoveryNamespace: springbootAppNamespace,
         DB_URL: "db@serviceIP:onPort",
         secretsmanagerkey: "secretsmanagerkey_value",
-        EXTERNAL_GET_URL1: `http://backendapi.springBootAppSharedPrivateNamespace/backend/api/external-api`,
-        EXTERNAL_GET_URL2: `http://backendapi.springBootAppSharedPrivateNamespace/backend/api/greet`,
+        EXTERNAL_GET_URL1: `http://backendapi.sbApp-springBootAppSharedPrivateNamespace/backend/api/external-api`,
+        EXTERNAL_GET_URL2: `http://backendapi.sbApp-springBootAppSharedPrivateNamespace/backend/api/greet`,
       }
     );
 
