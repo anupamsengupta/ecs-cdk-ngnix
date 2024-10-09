@@ -185,7 +185,7 @@ export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
 
 
     // Create REST resources
-    const mainResource1 = api.root.addResource('sbappx1');
+    const mainResource1 = api.root.addResource('sbapp1');
     mainResource1
       .addResource("{proxy+}")
       .addMethod("ANY", lambdaDelegationIntegration, {
@@ -194,7 +194,7 @@ export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {
         },
       });
 
-    const mainResource2 = api.root.addResource('sbappx2');
+    const mainResource2 = api.root.addResource('sbapp2');
     mainResource2
     .addResource("{proxy+}")
     .addMethod("ANY", lambdaDelegationIntegration, {

@@ -60,6 +60,8 @@ export class QSTaskMain extends Construct implements IQSTask {
           DB_URL: "db@serviceIP:onPort",
           secretsmanagerkey: "secretsmanagerkey_value",
           APP_CONTEXT_PATH: '/' + props.taskName,
+          EXTERNAL_GET_URL1: props.EXTERNAL_GET_URL1,
+          EXTERNAL_GET_URL2: props.EXTERNAL_GET_URL2,
         },
         portMappings: [{ containerPort: props.mappedPort }],
       }
