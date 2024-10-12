@@ -1,14 +1,9 @@
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
-import * as ecs from "aws-cdk-lib/aws-ecs";
-import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import { QSNetworkStack } from "./qs-network-stack";
-import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery'; // Import Cloud Map
-import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ecr from 'aws-cdk-lib/aws-ecr';  // Import ECR repository
-import { AlbListenerTarget } from "aws-cdk-lib/aws-elasticloadbalancingv2-targets";
 import { QSClusterMain } from "./qs-ecs-cluster";
 import { IQSTask, QSTaskMain } from "./qs-ecs-task";
 import { IQSAppLoadBalancer, QSAppLoadBalancerMain } from "./qs-ecs-apploadbalancer";
@@ -145,90 +140,6 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       frontendTask2.service,
       false
     );
-    // Create an Application Load Balancer (ALB)
-    /*const appAlb = new elbv2.ApplicationLoadBalancer(
-      this,
-      this.stackName + "Alb",
-      {
-        vpc: vpc,
-        internetFacing: false,
-        securityGroup: ecsSecurityGroup,
-      }
-    );
-    const applicationListener = appAlb.addListener(
-      this.stackName + "Listener",
-      {
-        port: 80,
-        open: true,
-      }
-    );
-    const appDefaultTragetGroup = applicationListener.addTargets(
-      "backendListenerTarget",
-      {
-        port: 80,
-        targets: [backendTask.service],
-        healthCheck: {
-          interval: cdk.Duration.seconds(15),
-          path: "/" + "backend" + "/actuator/health",
-          timeout: cdk.Duration.seconds(5),
-        },
-      }
-    );
-    const appFrontend1TragetGroup = applicationListener.addTargets(
-      "frontend1ListenerTarget",
-      {
-        port: 80,
-        targets: [frontendTask1.service],
-        conditions: [
-          elbv2.ListenerCondition.pathPatterns(["/" + "frontend1" + "*"]),
-        ],
-        priority: 1,
-        healthCheck: {
-          interval: cdk.Duration.seconds(15),
-          path: "/" + "frontend1" + "/actuator/health",
-          timeout: cdk.Duration.seconds(5),
-        },
-      }
-    );
-    const appFrontend2TragetGroup = applicationListener.addTargets(
-      "frontend2ListenerTarget",
-      {
-        port: 80,
-        targets: [frontendTask2.service],
-        conditions: [
-          elbv2.ListenerCondition.pathPatterns(["/" + "frontend2" + "*"]),
-        ],
-        priority: 2,
-        healthCheck: {
-          interval: cdk.Duration.seconds(15),
-          path: "/" + "frontend2" + "/actuator/health",
-          timeout: cdk.Duration.seconds(5),
-        },
-      }
-    );
-
-    const nlb = new elbv2.NetworkLoadBalancer(this, "LB", {
-      vpc,
-      internetFacing: true,
-    });
-
-    const nlbListener = nlb.addListener("PublicListener", {
-      port: 80,
-    });
-
-    //add the ALB listener target that can be used with teh NLB.
-    const albTarget = new AlbListenerTarget(applicationListener);
-    //const albTarget = new AlbListenerTarget(appLoadBalancerConstruct.applicationListener);
-    nlbListener.addTargets(this.stackName + "ALBTg", {
-      port: 80,
-      targets: [albTarget],
-      protocol: elbv2.Protocol.TCP,
-      healthCheck: {
-        interval: cdk.Duration.seconds(15),
-        path: "/" + 'backend' + "/actuator/health",
-        timeout: cdk.Duration.seconds(5),
-      },
-    });*/
     
     const nlbConstruct : IQSNetworkLoadBalancer = new QSNetworkLoadBalancerMain(
       this,
