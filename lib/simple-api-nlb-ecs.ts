@@ -86,10 +86,6 @@ export class EcsCdkSimpleApiNlbEcsDemoStack extends cdk.Stack {
         APP_CONTEXT_PATH: "/backend",
         DB_URL: "db@serviceIP:onPort",
         secretsmanagerkey: "secretsmanagerkey_value",
-        EXTERNAL_GET_URL1:
-          "http://backendapi.ecsnamespace/api/get-external-data1",
-        EXTERNAL_GET_URL2:
-          "http://backendapi.ecsnamespace/api/get-external-data2",
       },
     });
 
@@ -98,7 +94,7 @@ export class EcsCdkSimpleApiNlbEcsDemoStack extends cdk.Stack {
     });
 
     // Create a Fargate service for Backend
-    const backendService = new ecs.FargateService(this, "BackendService", {
+    const backendService = new ecs.FargateService(this, "backendService", {
       cluster,
       taskDefinition: backendTaskDefinition,
       desiredCount: 1,
@@ -110,10 +106,10 @@ export class EcsCdkSimpleApiNlbEcsDemoStack extends cdk.Stack {
     });
 
 
-      // Create a Fargate task definition
-    const frontendTaskDefinition = new ecs.FargateTaskDefinition(
+    // Create a Fargate task definition
+    const frontend1TaskDefinition = new ecs.FargateTaskDefinition(
       this,
-      "frontendTaskDef",
+      "frontend1TaskDef",
       {
         memoryLimitMiB: 512,
         cpu: 256,
@@ -121,33 +117,33 @@ export class EcsCdkSimpleApiNlbEcsDemoStack extends cdk.Stack {
       },
     );
 
-    const frontendAppContainer = frontendTaskDefinition.addContainer("FrontendService", {
+    const frontend1AppContainer = frontend1TaskDefinition.addContainer("frontend1Service", {
       image: ecs.ContainerImage.fromEcrRepository(privateEcrRepo, 'latest'), // Specify tag if needed
       //image: externalEcrImage,
-      logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'frontend' }),
+      logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'frontend1' }),
       environment: {
-        APP_CONTEXT_PATH: '/frontend',
+        APP_CONTEXT_PATH: '/frontend1',
         DB_URL: "db@serviceIP:onPort",
         secretsmanagerkey: "secretsmanagerkey_value",
         EXTERNAL_GET_URL1:
-          "http://backendapi.ecsnamespace/api/get-external-data1",
+          "http://backendapi.ecsnamespace/api/greet",
         EXTERNAL_GET_URL2:
-          "http://backendapi.ecsnamespace/api/get-external-data2",
+          "http://backendapi.ecsnamespace/api/external-api",
       },
     });
 
-    frontendAppContainer.addPortMappings({
+    frontend1AppContainer.addPortMappings({
       containerPort: 80,
     });
 
     // Create a Fargate service
-    const frontendAppService = new ecs.FargateService(this, "FrontendService", {
+    const frontend1AppService = new ecs.FargateService(this, "frontend1Service", {
       cluster,
-      taskDefinition: frontendTaskDefinition,
+      taskDefinition: frontend1TaskDefinition,
       desiredCount: 1,
       securityGroups: [ecsSecurityGroup],
       cloudMapOptions: {
-        name: 'frontendapi',
+        name: 'frontend1api',
         cloudMapNamespace: cloudmapNamespace
       },
     });
@@ -164,7 +160,7 @@ export class EcsCdkSimpleApiNlbEcsDemoStack extends cdk.Stack {
 
     listener.addTargets("EcsTg", {
       port: 80,
-      targets: [frontendAppService],
+      targets: [frontend1AppService],
     });
 
     // Create a VPC Link for API Gateway

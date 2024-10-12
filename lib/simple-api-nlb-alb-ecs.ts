@@ -88,10 +88,6 @@ export class EcsCdkSimpleApiNlbAlbEcsDemoStack extends cdk.Stack {
         APP_CONTEXT_PATH: "/backend",
         DB_URL: "db@serviceIP:onPort",
         secretsmanagerkey: "secretsmanagerkey_value",
-        EXTERNAL_GET_URL1:
-          "http://backendapi.ecsnamespace/api/get-external-data1",
-        EXTERNAL_GET_URL2:
-          "http://backendapi.ecsnamespace/api/get-external-data2",
       },
     });
 
@@ -112,9 +108,9 @@ export class EcsCdkSimpleApiNlbAlbEcsDemoStack extends cdk.Stack {
     });
 
     // Create a Fargate task definition
-    const frontendTaskDefinition = new ecs.FargateTaskDefinition(
+    const frontend1TaskDefinition = new ecs.FargateTaskDefinition(
       this,
-      "frontendTaskDef",
+      "frontend1TaskDef",
       {
         memoryLimitMiB: 512,
         cpu: 256,
@@ -122,36 +118,81 @@ export class EcsCdkSimpleApiNlbAlbEcsDemoStack extends cdk.Stack {
       }
     );
 
-    const frontendAppContainer = frontendTaskDefinition.addContainer(
-      "FrontendService",
+    const frontend1AppContainer = frontend1TaskDefinition.addContainer(
+      "frontend1Service",
       {
         image: ecs.ContainerImage.fromEcrRepository(privateEcrRepo, "latest"), // Specify tag if needed
         //image: externalEcrImage,
-        logging: ecs.LogDrivers.awsLogs({ streamPrefix: "frontend" }),
+        logging: ecs.LogDrivers.awsLogs({ streamPrefix: "frontend1" }),
         environment: {
-          APP_CONTEXT_PATH: "/frontend",
+          APP_CONTEXT_PATH: "/frontend1",
           DB_URL: "db@serviceIP:onPort",
           secretsmanagerkey: "secretsmanagerkey_value",
           EXTERNAL_GET_URL1:
-            "http://backendapi.ecsnamespace/backend/api/get-external-data1",
+            "http://backendapi.ecsnamespace/backend/api/greet",
           EXTERNAL_GET_URL2:
-            "http://backendapi.ecsnamespace/backend/api/get-external-data2",
+            "http://backendapi.ecsnamespace/backend/api/external-api",
         },
       }
     );
 
-    frontendAppContainer.addPortMappings({
+    frontend1AppContainer.addPortMappings({
       containerPort: 80,
     });
 
     // Create a Fargate service
-    const frontendAppService = new ecs.FargateService(this, "FrontendService", {
+    const frontend1AppService = new ecs.FargateService(this, "frontend1Service", {
       cluster,
-      taskDefinition: frontendTaskDefinition,
+      taskDefinition: frontend1TaskDefinition,
       desiredCount: 1,
       securityGroups: [ecsSecurityGroup],
       cloudMapOptions: {
-        name: "frontendapi",
+        name: "frontend1api",
+        cloudMapNamespace: cloudmapNamespace,
+      },
+    });
+
+    // Create a Fargate task definition
+    const frontend2TaskDefinition = new ecs.FargateTaskDefinition(
+      this,
+      "frontend2TaskDef",
+      {
+        memoryLimitMiB: 512,
+        cpu: 256,
+        executionRole: taskExecutionRole, // Set execution role for ECR pull
+      }
+    );
+
+    const frontend2AppContainer = frontend2TaskDefinition.addContainer(
+      "frontend2Service",
+      {
+        image: ecs.ContainerImage.fromEcrRepository(privateEcrRepo, "latest"), // Specify tag if needed
+        //image: externalEcrImage,
+        logging: ecs.LogDrivers.awsLogs({ streamPrefix: "frontend2" }),
+        environment: {
+          APP_CONTEXT_PATH: "/frontend2",
+          DB_URL: "db@serviceIP:onPort",
+          secretsmanagerkey: "secretsmanagerkey_value",
+          EXTERNAL_GET_URL1:
+            "http://backendapi.ecsnamespace/backend/api/greet",
+          EXTERNAL_GET_URL2:
+            "http://backendapi.ecsnamespace/backend/api/external-api",
+        },
+      }
+    );
+
+    frontend2AppContainer.addPortMappings({
+      containerPort: 80,
+    });
+
+    // Create a Fargate service
+    const frontend2AppService = new ecs.FargateService(this, "frontend2Service", {
+      cluster,
+      taskDefinition: frontend2TaskDefinition,
+      desiredCount: 1,
+      securityGroups: [ecsSecurityGroup],
+      cloudMapOptions: {
+        name: "frontend2api",
         cloudMapNamespace: cloudmapNamespace,
       },
     });
@@ -185,18 +226,34 @@ export class EcsCdkSimpleApiNlbAlbEcsDemoStack extends cdk.Stack {
         },
       }
     );
-    const appFrontendTragetGroup = applicationListener.addTargets(
-      "frontend ListenerTarget",
+    const appFrontend1TragetGroup = applicationListener.addTargets(
+      "frontend1ListenerTarget",
       {
         port: 80,
-        targets: [frontendAppService],
+        targets: [frontend1AppService],
         conditions: [
-          elbv2.ListenerCondition.pathPatterns(["/" + "frontend" + "*"]),
+          elbv2.ListenerCondition.pathPatterns(["/" + "frontend1" + "*"]),
         ],
         priority: 1,
         healthCheck: {
           interval: cdk.Duration.seconds(15),
-          path: "/" + "frontend" + "/actuator/health",
+          path: "/" + "frontend1" + "/actuator/health",
+          timeout: cdk.Duration.seconds(5),
+        },
+      }
+    );
+    const appFrontend2TragetGroup = applicationListener.addTargets(
+      "frontend2ListenerTarget",
+      {
+        port: 80,
+        targets: [frontend2AppService],
+        conditions: [
+          elbv2.ListenerCondition.pathPatterns(["/" + "frontend2" + "*"]),
+        ],
+        priority: 2,
+        healthCheck: {
+          interval: cdk.Duration.seconds(15),
+          path: "/" + "frontend2" + "/actuator/health",
           timeout: cdk.Duration.seconds(5),
         },
       }
