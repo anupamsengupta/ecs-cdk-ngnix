@@ -83,8 +83,13 @@ export class EcsCdkSimpleApiNlbEcsDemoStack extends cdk.Stack {
       //image: externalEcrImage,
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "backend" }),
       environment: {
+        APP_CONTEXT_PATH: "/backend",
         DB_URL: "db@serviceIP:onPort",
         secretsmanagerkey: "secretsmanagerkey_value",
+        EXTERNAL_GET_URL1:
+          "http://backendapi.ecsnamespace/api/get-external-data1",
+        EXTERNAL_GET_URL2:
+          "http://backendapi.ecsnamespace/api/get-external-data2",
       },
     });
 
@@ -122,8 +127,12 @@ export class EcsCdkSimpleApiNlbEcsDemoStack extends cdk.Stack {
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'frontend' }),
       environment: {
         APP_CONTEXT_PATH: '/frontend',
-        EXTERNAL_GET_URL1: `http://backendapi.ecsnamespace/api/get-external-data`,
-        EXTERNAL_GET_URL2: `http://backendapi.ecsnamespace/api/get-external-data`,
+        DB_URL: "db@serviceIP:onPort",
+        secretsmanagerkey: "secretsmanagerkey_value",
+        EXTERNAL_GET_URL1:
+          "http://backendapi.ecsnamespace/api/get-external-data1",
+        EXTERNAL_GET_URL2:
+          "http://backendapi.ecsnamespace/api/get-external-data2",
       },
     });
 
@@ -167,17 +176,6 @@ export class EcsCdkSimpleApiNlbEcsDemoStack extends cdk.Stack {
     const api = new apigateway.RestApi(this, "ApiGateway", {
       restApiName: "FrontEndSpringBootAppServiceApi",
       description: "API Gateway to access SpringBootApp service running on ECS Fargate",
-    });
-
-    // Create GET methods with VPC Link integration for each resource
-    const integration = new apigateway.Integration({
-      type: apigateway.IntegrationType.HTTP_PROXY,
-      integrationHttpMethod: "ANY",
-      uri: `http://${nlb.loadBalancerDnsName}/{proxy}`,
-      options: {
-        connectionType: apigateway.ConnectionType.VPC_LINK,
-        vpcLink,
-      },
     });
 
     // Add a root resource level health check
