@@ -11,6 +11,8 @@ import * as ecr from 'aws-cdk-lib/aws-ecr';  // Import ECR repository
 import { AlbListenerTarget } from "aws-cdk-lib/aws-elasticloadbalancingv2-targets";
 import { QSClusterMain } from "./qs-ecs-cluster";
 import { IQSTask, QSTaskMain } from "./qs-ecs-task";
+import { IQSAppLoadBalancer, QSAppLoadBalancerMain } from "./qs-ecs-apploadbalancer";
+import { IQSNetworkLoadBalancer, QSNetworkLoadBalancerMain } from "./qs-ecs-networkloadbalancer";
 
 export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -110,8 +112,41 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       EXTERNAL_GET_URL2: `http://backendapi.sbApp-springBootAppSharedPrivateNamespace/backend/api/greet`,
     });
 
+    const appLoadBalancerConstruct: IQSAppLoadBalancer =
+      new QSAppLoadBalancerMain(this, this.stackName + 'ALBConstruct', {
+        stackName: this.stackName,
+        vpc: vpc,
+        internetFacing: false,
+        port: 80,
+        open: true,
+        securityGroup: ecsSecurityGroup,
+      });
+    appLoadBalancerConstruct.addListenerTarget(
+      "backend",
+      80,
+      15,
+      5,
+      backendTask.service,
+      true
+    );
+    appLoadBalancerConstruct.addListenerTarget(
+      "frontend1",
+      80,
+      15,
+      5,
+      frontendTask1.service,
+      false
+    );
+    appLoadBalancerConstruct.addListenerTarget(
+      "frontend2",
+      80,
+      15,
+      5,
+      frontendTask2.service,
+      false
+    );
     // Create an Application Load Balancer (ALB)
-    const appAlb = new elbv2.ApplicationLoadBalancer(
+    /*const appAlb = new elbv2.ApplicationLoadBalancer(
       this,
       this.stackName + "Alb",
       {
@@ -183,6 +218,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
 
     //add the ALB listener target that can be used with teh NLB.
     const albTarget = new AlbListenerTarget(applicationListener);
+    //const albTarget = new AlbListenerTarget(appLoadBalancerConstruct.applicationListener);
     nlbListener.addTargets(this.stackName + "ALBTg", {
       port: 80,
       targets: [albTarget],
@@ -192,11 +228,24 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
         path: "/" + 'backend' + "/actuator/health",
         timeout: cdk.Duration.seconds(5),
       },
-    });
+    });*/
+    
+    const nlbConstruct : IQSNetworkLoadBalancer = new QSNetworkLoadBalancerMain(
+      this,
+      this.stackName + "NLBConstruct", {
+        stackName : this.stackName,
+        vpc: vpc,
+        internetFacing: true,
+        port: 80,
+        open: true,
+        applicationListener: appLoadBalancerConstruct.applicationListener,
+        defaulListenerTargetName: 'backend',
+      }
+    );
 
     // Create a VPC Link for API Gateway
     const vpcLink = new apigateway.VpcLink(this, "VpcLink", {
-      targets: [nlb],
+      targets: [nlbConstruct.appNlb],
     });
 
     // Create an API Gateway
@@ -210,7 +259,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     const rootIntegration = new apigateway.Integration({
       type: apigateway.IntegrationType.HTTP_PROXY,
       integrationHttpMethod: "ANY",
-      uri: `http://${nlb.loadBalancerDnsName}/{proxy}`,
+      uri: `http://${nlbConstruct.appNlb.loadBalancerDnsName}/{proxy}`,
       options: {
         connectionType: apigateway.ConnectionType.VPC_LINK,
         vpcLink,
@@ -228,7 +277,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, "LoadBalancerDNS", {
-      value: nlb.loadBalancerDnsName,
+      value: nlbConstruct.appNlb.loadBalancerDnsName,
     });
   }
 }
