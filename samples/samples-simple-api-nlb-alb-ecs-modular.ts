@@ -8,6 +8,8 @@ import { QSClusterMain } from "../lib/qs-ecs-cluster";
 import { IQSTask, QSTaskMain } from "../lib/qs-ecs-task";
 import { IQSAppLoadBalancer, QSAppLoadBalancerMain } from "../lib/qs-ecs-apploadbalancer";
 import { IQSNetworkLoadBalancer, QSNetworkLoadBalancerMain } from "../lib/qs-ecs-networkloadbalancer";
+import { QSS3BucketConstruct } from "../lib/qs-s3";
+import { QSSqsQueueConstruct } from "../lib/qs-sqs";
 
 export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -170,6 +172,8 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     const rootIntegration = new apigateway.Integration({
       type: apigateway.IntegrationType.HTTP_PROXY,
       integrationHttpMethod: "ANY",
+      // The URI always needs to be mentioned in back quotes as below
+      // Single quote doesnt work.
       uri: `http://${nlbConstruct.appNlb.loadBalancerDnsName}/{proxy}`,
       options: {
         connectionType: apigateway.ConnectionType.VPC_LINK,
@@ -186,6 +190,25 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
         "method.request.path.proxy": true, // Enable path proxying
       },
     });
+
+    //Add a queue
+    const testQueue = new QSSqsQueueConstruct(this,
+      this.stackName + 'com-quickysoft-anu-testqueue-13102024-1', {
+        stackName : this.stackName,
+        queueName : 'com-quickysoft-anu-testqueue-13102024-1',
+        deadLetterQueueName : 'com-quickysoft-anu-testqueue-13102024-1-DLQ'
+      }
+    );
+
+    //Add a bucket with a event notification to a queue
+    const testS3Bucket = new QSS3BucketConstruct(this,
+      this.stackName + 'com-quickysoft-anu-testbucket-13102024-1', {
+        stackName : this.stackName,
+        bucketName : 'com-quickysoft-anu-testbucket-13102024-1',
+        eventBridgeEnabled : true,
+        notificationQueueName : 'com-quickysoft-anu-testbucket-13102024Q-1'
+      }
+    );
 
     new cdk.CfnOutput(this, "LoadBalancerDNS", {
       value: nlbConstruct.appNlb.loadBalancerDnsName,
