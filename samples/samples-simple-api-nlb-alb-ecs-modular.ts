@@ -193,20 +193,20 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
 
     //Add a queue
     const testQueue = new QSSqsQueueConstruct(this,
-      this.stackName + 'com-quickysoft-anu-testqueue-13102024-1', {
+      this.stackName + 'com-quickysoft-anu-testqueue-13102024', {
         stackName : this.stackName,
-        queueName : 'com-quickysoft-anu-testqueue-13102024-1',
-        deadLetterQueueName : 'com-quickysoft-anu-testqueue-13102024-1-DLQ'
+        queueName : 'com-quickysoft-anu-testqueue-13102024',
+        deadLetterQueueName : 'com-quickysoft-anu-testqueue-13102024-dlq'
       }
     );
 
     //Add a bucket with a event notification to a queue
     const testS3Bucket = new QSS3BucketConstruct(this,
-      this.stackName + 'com-quickysoft-anu-testbucket-13102024-1', {
+      this.stackName + 'com-quickysoft-anu-testbucket-13102024', {
         stackName : this.stackName,
-        bucketName : 'com-quickysoft-anu-testbucket-13102024-1',
+        bucketName : 'com-quickysoft-anu-testbucket-13102024',
         eventBridgeEnabled : true,
-        notificationQueueName : 'com-quickysoft-anu-testbucket-13102024Q-1'
+        notificationQueueName : 'com-quickysoft-anu-testbucket-13102024q'
       }
     );
 
