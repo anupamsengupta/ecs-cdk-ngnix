@@ -68,7 +68,7 @@ export class QSSqsQueueConstruct extends Construct implements IQSSqsQueue {
     } else if (props.deadLetterQueueName != undefined) {
       const deadLetterQueue = new sqs.Queue(
         this,
-        props.stackName + props.deadLetterQueueName,
+        props.deadLetterQueueName,
         {
           retentionPeriod: cdk.Duration.days(14),
         }

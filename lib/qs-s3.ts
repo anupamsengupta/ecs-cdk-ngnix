@@ -73,7 +73,7 @@ export class QSS3BucketConstruct extends Construct implements IQSS3Bucket {
         } else {
           notificationQueue = new sqs.Queue(
             this,
-            props.stackName + props.notificationQueueName,
+            props.notificationQueueName,
             {
               visibilityTimeout: cdk.Duration.seconds(
                 props.notificationQueueVisibilityTO
