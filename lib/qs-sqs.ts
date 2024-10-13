@@ -50,7 +50,7 @@ export class QSSqsQueueConstruct extends Construct implements IQSSqsQueue {
     if (props.deadLetterQueueArn != undefined) {
       deadLetterQueue = sqs.Queue.fromQueueArn(
         this,
-        "ExistingDLQ",
+        props.stackName + "ExistingDLQ",
         props.deadLetterQueueArn
       );
       this.q = new sqs.Queue(this, props.stackName + props.queueName, {
