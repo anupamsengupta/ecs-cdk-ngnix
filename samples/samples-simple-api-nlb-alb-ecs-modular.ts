@@ -2,12 +2,12 @@ import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
-import { QSNetworkStack } from "./qs-network-stack";
+import { QSNetworkStack } from "../lib/qs-network-stack";
 import * as ecr from 'aws-cdk-lib/aws-ecr';  // Import ECR repository
-import { QSClusterMain } from "./qs-ecs-cluster";
-import { IQSTask, QSTaskMain } from "./qs-ecs-task";
-import { IQSAppLoadBalancer, QSAppLoadBalancerMain } from "./qs-ecs-apploadbalancer";
-import { IQSNetworkLoadBalancer, QSNetworkLoadBalancerMain } from "./qs-ecs-networkloadbalancer";
+import { QSClusterMain } from "../lib/qs-ecs-cluster";
+import { IQSTask, QSTaskMain } from "../lib/qs-ecs-task";
+import { IQSAppLoadBalancer, QSAppLoadBalancerMain } from "../lib/qs-ecs-apploadbalancer";
+import { IQSNetworkLoadBalancer, QSNetworkLoadBalancerMain } from "../lib/qs-ecs-networkloadbalancer";
 
 export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {

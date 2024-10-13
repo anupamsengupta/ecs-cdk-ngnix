@@ -10,8 +10,8 @@ import * as ecr from 'aws-cdk-lib/aws-ecr';  // Import ECR repository
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery'; // Import Cloud Map
 
-import { QSNetworkStack } from "./qs-network-stack";
-import { QSClusterMain } from "./qs-ecs-cluster";
+import { QSNetworkStack } from "../lib/qs-network-stack";
+import { QSClusterMain } from "../lib/qs-ecs-cluster";
 
 
 export class EcsCdkSBAppDirectStackSimple extends cdk.Stack {

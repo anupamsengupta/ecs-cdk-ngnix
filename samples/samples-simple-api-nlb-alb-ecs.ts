@@ -4,7 +4,7 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
-import { QSNetworkStack } from "./qs-network-stack";
+import { QSNetworkStack } from "../lib/qs-network-stack";
 import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery'; // Import Cloud Map
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ecr from 'aws-cdk-lib/aws-ecr';  // Import ECR repository

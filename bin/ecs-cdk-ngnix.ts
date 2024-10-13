@@ -6,7 +6,7 @@ import * as cdk from 'aws-cdk-lib';
 //import { EcsCdkSBAppDirectStackSimple } from '../lib/ecs-cdk-sbapp-stack-direct-alb-apigateway-lambda-2';
 //import {EcsCdkSimpleApiNlbEcsDemoStack} from '../lib/simple-api-nlb-ecs';
 //import {EcsCdkSimpleApiNlbAlbEcsDemoStack} from '../lib/simple-api-nlb-alb-ecs';
-import {EcsCdkSimpleApiNlbAlbEcsModularDemoStack} from '../lib/simple-api-nlb-alb-ecs-modular';
+import {EcsCdkSimpleApiNlbAlbEcsModularDemoStack} from '../samples/samples-simple-api-nlb-alb-ecs-modular';
 
 const app = new cdk.App();
 new EcsCdkSimpleApiNlbAlbEcsModularDemoStack(app, 'ecsCdkSimpleApiNlbAlbEcsModularDemoStack', {
