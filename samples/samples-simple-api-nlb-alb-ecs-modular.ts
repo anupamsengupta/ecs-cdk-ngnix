@@ -3,13 +3,20 @@ import { Construct } from "constructs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import { QSNetworkStack } from "../lib/qs-network-stack";
-import * as ecr from 'aws-cdk-lib/aws-ecr';  // Import ECR repository
+import * as ecr from "aws-cdk-lib/aws-ecr"; // Import ECR repository
 import { QSClusterMain } from "../lib/qs-ecs-cluster";
 import { IQSTask, QSTaskMain } from "../lib/qs-ecs-task";
-import { IQSAppLoadBalancer, QSAppLoadBalancerMain } from "../lib/qs-ecs-apploadbalancer";
-import { IQSNetworkLoadBalancer, QSNetworkLoadBalancerMain } from "../lib/qs-ecs-networkloadbalancer";
+import {
+  IQSAppLoadBalancer,
+  QSAppLoadBalancerMain,
+} from "../lib/qs-ecs-apploadbalancer";
+import {
+  IQSNetworkLoadBalancer,
+  QSNetworkLoadBalancerMain,
+} from "../lib/qs-ecs-networkloadbalancer";
 import { QSS3BucketConstruct } from "../lib/qs-s3";
 import { QSSqsQueueConstruct } from "../lib/qs-sqs";
+import { QSSnsTopicConstruct } from "../lib/qs-sns";
 import { QSRdsPostgresConstruct } from "../lib/qs-rds-postgress";
 
 export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
@@ -17,13 +24,17 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     super(scope, id, props);
 
     // Create a VPC and overall network
-    const clusterNetworkStack = new QSNetworkStack(scope, "ecsNetworkStackName1", {
-      env: {
-        region: "us-east-1",
-      },
-      vpcCidr: "10.101.0.0/16",
-      azs: ["us-east-1a", "us-east-1b"],
-    });
+    const clusterNetworkStack = new QSNetworkStack(
+      scope,
+      "ecsNetworkStackName1",
+      {
+        env: {
+          region: "us-east-1",
+        },
+        vpcCidr: "10.101.0.0/16",
+        azs: ["us-east-1a", "us-east-1b"],
+      }
+    );
 
     const vpc: ec2.IVpc = clusterNetworkStack.network.vpc;
     let namespace = "springBootAppSharedPrivateNamespace";
@@ -111,7 +122,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     });
 
     const appLoadBalancerConstruct: IQSAppLoadBalancer =
-      new QSAppLoadBalancerMain(this, this.stackName + 'ALBConstruct', {
+      new QSAppLoadBalancerMain(this, this.stackName + "ALBConstruct", {
         stackName: this.stackName,
         vpc: vpc,
         internetFacing: false,
@@ -143,17 +154,18 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       frontendTask2.service,
       false
     );
-    
-    const nlbConstruct : IQSNetworkLoadBalancer = new QSNetworkLoadBalancerMain(
+
+    const nlbConstruct: IQSNetworkLoadBalancer = new QSNetworkLoadBalancerMain(
       this,
-      this.stackName + "NLBConstruct", {
-        stackName : this.stackName,
+      this.stackName + "NLBConstruct",
+      {
+        stackName: this.stackName,
         vpc: vpc,
         internetFacing: true,
         port: 80,
         open: true,
         applicationListener: appLoadBalancerConstruct.applicationListener,
-        defaulListenerTargetName: 'backend',
+        defaulListenerTargetName: "backend",
       }
     );
 
@@ -193,32 +205,49 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     });
 
     //Add a queue
-    const testQueue = new QSSqsQueueConstruct(this,
-      this.stackName + 'com-quickysoft-anu-testqueue-13102024', {
-        stackName : this.stackName,
-        queueName : 'com-quickysoft-anu-testqueue-13102024',
-        deadLetterQueueName : 'com-quickysoft-anu-testqueue-13102024-dlq'
+    const testQueue = new QSSqsQueueConstruct(
+      this,
+      this.stackName + "com-quickysoft-anu-testqueue-13102024",
+      {
+        stackName: this.stackName,
+        queueName: "com-quickysoft-anu-testqueue-13102024",
+        deadLetterQueueName: "com-quickysoft-anu-testqueue-13102024-dlq",
       }
     );
 
     //Add a bucket with a event notification to a queue
-    const testS3Bucket = new QSS3BucketConstruct(this,
-      this.stackName + 'com-quickysoft-anu-testbucket-13102024', {
-        stackName : this.stackName,
-        bucketName : 'com-quickysoft-anu-testbucket-13102024',
-        eventBridgeEnabled : true,
-        notificationQueueName : 'com-quickysoft-anu-testbucket-13102024q'
+    const testS3Bucket = new QSS3BucketConstruct(
+      this,
+      this.stackName + "com-quickysoft-anu-testbucket-13102024",
+      {
+        stackName: this.stackName,
+        bucketName: "com-quickysoft-anu-testbucket-13102024",
+        eventBridgeEnabled: true,
+        notificationQueueName: "com-quickysoft-anu-testbucket-13102024q",
       }
     );
 
-    const postgresRds = new QSRdsPostgresConstruct(this,
-      'testPostgressSQLRDS', {
-        stackName : this.stackName,
-        vpc : clusterNetworkStack.network.vpc,
-        databaseName : 'testPostgressSQLRDS',
-        securityGroup : clusterNetworkStack.network.preconfiguredVpcCidrAccessRDSPostgressSecurityGroup,
+    const postgresRds = new QSRdsPostgresConstruct(
+      this,
+      "testPostgressSQLRDS",
+      {
+        stackName: this.stackName,
+        vpc: clusterNetworkStack.network.vpc,
+        databaseName: "testPostgressSQLRDS",
+        securityGroup:
+          clusterNetworkStack.network
+            .preconfiguredVpcCidrAccessRDSPostgressSecurityGroup,
       }
-    )
+    );
+
+    const snsQueueConstruct = new QSSnsTopicConstruct(
+      this,
+      "com-quickysoft-anu-test-14102024",
+      {
+        stackName: this.stackName,
+        topicName: "com-quickysoft-anu-test-14102024",
+      }
+    );
 
     new cdk.CfnOutput(this, "LoadBalancerDNS", {
       value: nlbConstruct.appNlb.loadBalancerDnsName,
