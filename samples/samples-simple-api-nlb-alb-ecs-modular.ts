@@ -10,6 +10,7 @@ import { IQSAppLoadBalancer, QSAppLoadBalancerMain } from "../lib/qs-ecs-appload
 import { IQSNetworkLoadBalancer, QSNetworkLoadBalancerMain } from "../lib/qs-ecs-networkloadbalancer";
 import { QSS3BucketConstruct } from "../lib/qs-s3";
 import { QSSqsQueueConstruct } from "../lib/qs-sqs";
+import { QSRdsPostgresConstruct } from "../lib/qs-rds-postgress";
 
 export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -209,6 +210,15 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
         notificationQueueName : 'com-quickysoft-anu-testbucket-13102024q'
       }
     );
+
+    const postgresRds = new QSRdsPostgresConstruct(this,
+      'testPostgressSQLRDS', {
+        stackName : this.stackName,
+        vpc : clusterNetworkStack.network.vpc,
+        databaseName : 'testPostgressSQLRDS',
+        securityGroup : clusterNetworkStack.network.preconfiguredVpcCidrAccessRDSPostgressSecurityGroup,
+      }
+    )
 
     new cdk.CfnOutput(this, "LoadBalancerDNS", {
       value: nlbConstruct.appNlb.loadBalancerDnsName,

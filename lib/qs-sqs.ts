@@ -1,8 +1,6 @@
 import { Construct } from "constructs";
 import * as cdk from "aws-cdk-lib";
 import * as sqs from "aws-cdk-lib/aws-sqs";
-import { Duplex } from "stream";
-import { Visibility } from "aws-cdk-lib/aws-appsync";
 
 export interface QSSqsQueueProps {
   stackName: string;
