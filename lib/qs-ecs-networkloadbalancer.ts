@@ -2,7 +2,6 @@ import { Construct } from "constructs";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as cdk from "aws-cdk-lib";
 import { IVpc } from "aws-cdk-lib/aws-ec2";
-import { IQSAppLoadBalancer } from "./qs-ecs-apploadbalancer";
 import { AlbListenerTarget } from "aws-cdk-lib/aws-elasticloadbalancingv2-targets";
 import { ApplicationListener } from 'aws-cdk-lib/aws-elasticloadbalancingv2/lib';
 

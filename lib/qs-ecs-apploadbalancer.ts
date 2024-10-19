@@ -1,6 +1,5 @@
 import { Construct } from "constructs";
 import * as ecs from "aws-cdk-lib/aws-ecs";
-import { IQSNetwork } from "./qs-network";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as cdk from "aws-cdk-lib";
 import { ISecurityGroup, IVpc } from "aws-cdk-lib/aws-ec2";

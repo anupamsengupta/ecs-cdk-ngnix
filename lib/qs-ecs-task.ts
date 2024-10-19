@@ -1,13 +1,9 @@
 import { Construct } from "constructs";
-import { Tags } from "aws-cdk-lib";
 import * as servicediscovery from "aws-cdk-lib/aws-servicediscovery"; // Import Cloud Map
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
-import * as ecr from "aws-cdk-lib/aws-ecr"; // Import ECR repository
 import { IRepository } from "aws-cdk-lib/aws-ecr/lib/repository";
 import * as iam from "aws-cdk-lib/aws-iam";
-import { IQSCluster } from "./qs-ecs-cluster";
-import * as cdk from "aws-cdk-lib";
 
 export interface QSTaskProps {
   stackName: string;

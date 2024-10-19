@@ -1,6 +1,5 @@
 import { Construct } from "constructs";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
-import { IQSAppLoadBalancer } from "./qs-ecs-apploadbalancer";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 
 export interface QSApiGatewayProps {

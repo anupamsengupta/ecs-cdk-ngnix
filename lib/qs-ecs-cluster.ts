@@ -1,5 +1,4 @@
 import { Construct } from "constructs";
-import { Tags } from "aws-cdk-lib";
 import * as servicediscovery from "aws-cdk-lib/aws-servicediscovery"; // Import Cloud Map
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
