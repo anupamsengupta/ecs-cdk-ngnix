@@ -40,6 +40,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     let namespace = "springBootAppSharedPrivateNamespace";
     //Create the cluster, roles and namespaces
     const clusterConstruct = new QSClusterMain(this, "sbAppCluster", {
+      serviceClusterName : "svcCluster1",
       network: clusterNetworkStack.network,
       stackName: "sbApp",
       serviceDiscoveryNamespace: namespace,
@@ -73,7 +74,8 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       desiredCount: 1,
       securityGroup:
         clusterNetworkStack.network.preconfiguredVpcCidrAccessHttpSecurityGroup,
-      executionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
+      taskExecutionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
+      taskRole : clusterConstruct.taskRole,
       serviceDiscoveryNamespace: springbootAppNamespace,
       DB_URL: "db@serviceIP:onPort",
       secretsmanagerkey: "secretsmanagerkey_value",
@@ -93,12 +95,13 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       desiredCount: 1,
       securityGroup:
         clusterNetworkStack.network.preconfiguredVpcCidrAccessHttpSecurityGroup,
-      executionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
-      serviceDiscoveryNamespace: springbootAppNamespace,
+        taskExecutionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
+        taskRole : clusterConstruct.taskRole,
+        serviceDiscoveryNamespace: springbootAppNamespace,
       DB_URL: "db@serviceIP:onPort",
       secretsmanagerkey: "secretsmanagerkey_value",
-      EXTERNAL_GET_URL1: `http://backendapi.sbApp-springBootAppSharedPrivateNamespace/backend/api/external-api`,
-      EXTERNAL_GET_URL2: `http://backendapi.sbApp-springBootAppSharedPrivateNamespace/backend/api/greet`,
+      EXTERNAL_GET_URL1: `http://backendapi.sbApp-svcCluster1-springBootAppSharedPrivateNamespace/backend/api/external-api`,
+      EXTERNAL_GET_URL2: `http://backendapi.sbApp-svcCluster1-springBootAppSharedPrivateNamespace/backend/api/greet`,
     });
 
     const frontendTask2: IQSTask = new QSTaskMain(this, "frontend2", {
@@ -113,12 +116,13 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       desiredCount: 1,
       securityGroup:
         clusterNetworkStack.network.preconfiguredVpcCidrAccessHttpSecurityGroup,
-      executionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
-      serviceDiscoveryNamespace: springbootAppNamespace,
+        taskExecutionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
+        taskRole : clusterConstruct.taskRole,
+        serviceDiscoveryNamespace: springbootAppNamespace,
       DB_URL: "db@serviceIP:onPort",
       secretsmanagerkey: "secretsmanagerkey_value",
-      EXTERNAL_GET_URL1: `http://backendapi.sbApp-springBootAppSharedPrivateNamespace/backend/api/external-api`,
-      EXTERNAL_GET_URL2: `http://backendapi.sbApp-springBootAppSharedPrivateNamespace/backend/api/greet`,
+      EXTERNAL_GET_URL1: `http://backendapi.sbApp-svcCluster1-springBootAppSharedPrivateNamespace/backend/api/external-api`,
+      EXTERNAL_GET_URL2: `http://backendapi.sbApp-svcCluster1-springBootAppSharedPrivateNamespace/backend/api/greet`,
     });
 
     const appLoadBalancerConstruct: IQSAppLoadBalancer =

@@ -7,10 +7,11 @@ import * as ecr from "aws-cdk-lib/aws-ecr"; // Import ECR repository
 import { IRepository } from "aws-cdk-lib/aws-ecr/lib/repository";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { IQSCluster } from "./qs-ecs-cluster";
+import * as cdk from "aws-cdk-lib";
 
 export interface QSTaskProps {
   stackName: string;
-  taskName:string;
+  taskName: string;
   cluster: ecs.ICluster;
   memoryLimitMiB: number;
   cpu: number;
@@ -19,7 +20,8 @@ export interface QSTaskProps {
   mappedPort: number;
   desiredCount: number;
   securityGroup: ec2.ISecurityGroup;
-  executionRole: iam.Role;
+  taskExecutionRole: iam.Role;
+  taskRole: iam.Role;
   serviceDiscoveryNamespace: servicediscovery.INamespace;
   DB_URL: string;
   secretsmanagerkey: string;
@@ -39,45 +41,59 @@ export class QSTaskMain extends Construct implements IQSTask {
   public constructor(scope: Construct, id: string, props: QSTaskProps) {
     super(scope, id);
 
+    this.taskname = props.stackName + props.taskName;
     // Create a Fargate task definition for Backend
     const backendServiceTaskDefinition = new ecs.FargateTaskDefinition(
       this,
-      props.taskName + 'TaskDef',
+      this.taskname + "TaskDef",
       {
         memoryLimitMiB: props.memoryLimitMiB,
         cpu: props.cpu,
-        executionRole: props.executionRole, // Set execution role for ECR pull
+        executionRole: props.taskExecutionRole, // Set execution role for ECR pull
+        taskRole: props.taskRole,
       }
     );
 
-    const containerName = props.taskName + 'Container';
+    const containerName = this.taskname + "Container";
     const backendServiceContainer = backendServiceTaskDefinition.addContainer(
       containerName,
       {
+        containerName: this.taskname,
         image: ecs.ContainerImage.fromEcrRepository(props.repo, props.repoTag), // Specify tag if needed
         logging: ecs.LogDrivers.awsLogs({ streamPrefix: containerName }),
         environment: {
           DB_URL: "db@serviceIP:onPort",
           secretsmanagerkey: "secretsmanagerkey_value",
-          APP_CONTEXT_PATH: '/' + props.taskName,
+          APP_CONTEXT_PATH: "/" + props.taskName,
           EXTERNAL_GET_URL1: props.EXTERNAL_GET_URL1,
           EXTERNAL_GET_URL2: props.EXTERNAL_GET_URL2,
         },
         portMappings: [{ containerPort: props.mappedPort }],
+        //Dont know how to make thsi work!!!!!
+        /*healthCheck: {
+          command: [
+            "CMD-SHELL",
+            "curl -f http://127.0.0.1/" + props.taskName + "/actuator/health || exit 1",
+          ],
+          interval : cdk.Duration.seconds(15),
+          retries : 5,
+          timeout : cdk.Duration.seconds(5),
+          startPeriod : cdk.Duration.seconds(30),
+        },*/
       }
     );
 
     // Create a Fargate service for Backend
-    this.service = new ecs.FargateService(this, props.taskName + "Service", {
+    this.service = new ecs.FargateService(this, this.taskname + "Service", {
+      serviceName: this.taskname + "Service",
       cluster: props.cluster,
       taskDefinition: backendServiceTaskDefinition,
       desiredCount: 1,
       securityGroups: [props.securityGroup],
       cloudMapOptions: {
-        name: props.taskName + 'api',
+        name: props.taskName + "api",
         cloudMapNamespace: props.serviceDiscoveryNamespace,
       },
     });
-
   }
 }
