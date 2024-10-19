@@ -204,29 +204,11 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       },
     });
 
-    //Add a queue
-    const testQueue = new QSSqsQueueConstruct(
-      this,
-      this.stackName + "com-quickysoft-anu-testqueue-13102024",
-      {
-        stackName: this.stackName,
-        queueName: "com-quickysoft-anu-testqueue-13102024",
-        deadLetterQueueName: "com-quickysoft-anu-testqueue-13102024-dlq",
-      }
-    );
+    new cdk.CfnOutput(this, "LoadBalancerDNS", {
+      value: nlbConstruct.appNlb.loadBalancerDnsName,
+    });
 
-    //Add a bucket with a event notification to a queue
-    const testS3Bucket = new QSS3BucketConstruct(
-      this,
-      this.stackName + "com-quickysoft-anu-testbucket-13102024",
-      {
-        stackName: this.stackName,
-        bucketName: "com-quickysoft-anu-testbucket-13102024",
-        eventBridgeEnabled: true,
-        notificationQueueName: "com-quickysoft-anu-testbucket-13102024q",
-      }
-    );
-
+    //Add rds construct.
     const postgresRds = new QSRdsPostgresConstruct(
       this,
       "testPostgressSQLRDS",
@@ -240,6 +222,18 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       }
     );
 
+    //Add a queue
+    const testQueue = new QSSqsQueueConstruct(
+      this,
+      this.stackName + "com-quickysoft-anu-testqueue-13102024",
+      {
+        stackName: this.stackName,
+        queueName: "com-quickysoft-anu-testqueue-13102024",
+        deadLetterQueueName: "com-quickysoft-anu-testqueue-13102024-dlq",
+      }
+    );
+
+    //Add a sns topic
     const snsQueueConstruct = new QSSnsTopicConstruct(
       this,
       "com-quickysoft-anu-test-14102024",
@@ -249,8 +243,28 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       }
     );
 
-    new cdk.CfnOutput(this, "LoadBalancerDNS", {
-      value: nlbConstruct.appNlb.loadBalancerDnsName,
-    });
+    //Add a bucket with a event notification to a queue
+    const testS3BucketEN = new QSS3BucketConstruct(
+      this,
+      this.stackName + "com-quickysoft-anu-eventnotification",
+      {
+        stackName: this.stackName,
+        bucketName: "com-quickysoft-anu-eventnotification-bucket",
+        eventNotificationEnabled: true,
+        notificationQueueName: "com-quickysoft-anu-eventnotification-q",
+      }
+    );
+    //Add a bucket with a event notification to a queue
+    const testS3BucketEB = new QSS3BucketConstruct(
+      this,
+      this.stackName + "com-quickysoft-anu-eventbridge",
+      {
+        stackName: this.stackName,
+        bucketName: "com-quickysoft-anu-eventbridge-bucket",
+        eventBridgeEnabled: true,
+        notificationQueueName: "com-quickysoft-anu-eventbridge-q",
+      }
+    );
+
   }
 }
