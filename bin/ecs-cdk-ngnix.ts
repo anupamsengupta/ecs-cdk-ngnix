@@ -9,7 +9,7 @@ import * as cdk from 'aws-cdk-lib';
 import {EcsCdkSimpleApiNlbAlbEcsModularDemoStack} from '../samples/samples-simple-api-nlb-alb-ecs-modular';
 
 const app = new cdk.App();
-new EcsCdkSimpleApiNlbAlbEcsModularDemoStack(app, 'ecsCdkSimpleApiNlbAlbEcsModularDemoStack', {
+new EcsCdkSimpleApiNlbAlbEcsModularDemoStack(app, 'api-nlb-alb-modular-demo-stack0', {
   env : {region : 'us-east-1'}
 });
 app.synth();
