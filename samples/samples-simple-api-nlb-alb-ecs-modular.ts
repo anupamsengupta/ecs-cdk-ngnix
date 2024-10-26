@@ -62,6 +62,31 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       "quickysoft/sample-spring-boot-app"
     );
 
+    //using service discovery
+    /*const backendTask: IQSTask = new QSTaskMain(this, "backend", {
+      stackName: this.stackName,
+      taskName: "backend",
+      cluster: clusterConstruct.cluster,
+      memoryLimitMiB: 512,
+      cpu: 256,
+      repo: privateEcrRepo,
+      repoTag: "latest",
+      mappedPort: 80,
+      desiredCount: 1,
+      securityGroup:
+        clusterNetworkStack.network.preconfiguredVpcCidrAccessHttpSecurityGroup,
+      taskExecutionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
+      taskRole: clusterConstruct.taskRole,
+      //**** use the following flags ****
+      useServiceDiscovery: true,
+      useServiceConnectProxy: false,
+      serviceDiscoveryNamespace: springbootAppNamespace,
+      DB_URL: "db@serviceIP:onPort",
+      secretsmanagerkey: "secretsmanagerkey_value",
+      EXTERNAL_GET_URL1: `http://localhost/backend/api/external-api`,
+      EXTERNAL_GET_URL2: `http://localhost/backend/api/greet`,
+    });*/
+    
     const backendTask: IQSTask = new QSTaskMain(this, "backend", {
       stackName: this.stackName,
       taskName: "backend",
@@ -76,7 +101,9 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
         clusterNetworkStack.network.preconfiguredVpcCidrAccessHttpSecurityGroup,
       taskExecutionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
       taskRole: clusterConstruct.taskRole,
-      useServiceDiscovery: true,
+      //**** use the following flags ****
+      useServiceDiscovery: false,
+      useServiceConnectProxy: true,
       serviceDiscoveryNamespace: springbootAppNamespace,
       DB_URL: "db@serviceIP:onPort",
       secretsmanagerkey: "secretsmanagerkey_value",
@@ -85,6 +112,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     });
     console.log("backendTask added.");
 
+    //using service discovery
     /*const frontendTask1: IQSTask = new QSTaskMain(this, "frontend1", {
       stackName: this.stackName,
       taskName: "frontend1",
@@ -99,7 +127,9 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
         clusterNetworkStack.network.preconfiguredVpcCidrAccessHttpSecurityGroup,
       taskExecutionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
       taskRole: clusterConstruct.taskRole,
-      useServiceConnectProxy: true,
+      //**** use the following flags ****
+      useServiceDiscovery: true,
+      useServiceConnectProxy: false,
       serviceDiscoveryNamespace: springbootAppNamespace,
       DB_URL: "db@serviceIP:onPort",
       secretsmanagerkey: "secretsmanagerkey_value",
@@ -108,6 +138,57 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     });
     console.log("frontendTask1 added.");*/
 
+    //using service connect proxy
+    const frontendTask1: IQSTask = new QSTaskMain(this, "frontend1", {
+      stackName: this.stackName,
+      taskName: "frontend1",
+      cluster: clusterConstruct.cluster,
+      memoryLimitMiB: 512,
+      cpu: 256,
+      repo: privateEcrRepo,
+      repoTag: "latest",
+      mappedPort: 80,
+      desiredCount: 1,
+      securityGroup:
+        clusterNetworkStack.network.preconfiguredVpcCidrAccessHttpSecurityGroup,
+      taskExecutionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
+      taskRole: clusterConstruct.taskRole,
+      //**** use the following flags ****
+      useServiceDiscovery: false,
+      useServiceConnectProxy: true,
+      serviceDiscoveryNamespace: springbootAppNamespace,
+      DB_URL: "db@serviceIP:onPort",
+      secretsmanagerkey: "secretsmanagerkey_value",
+      EXTERNAL_GET_URL1: `http://api-nlb-alb-modular-demo-stack0backendapi:80/backend/api/external-api`,
+      EXTERNAL_GET_URL2: `http://api-nlb-alb-modular-demo-stack0backendapi:80/backend/api/greet`,
+    });
+    console.log("frontendTask1 added.");
+
+    //using service discovery
+    /*const frontendTask2: IQSTask = new QSTaskMain(this, "frontend2", {
+      stackName: this.stackName,
+      taskName: "frontend2",
+      cluster: clusterConstruct.cluster,
+      memoryLimitMiB: 512,
+      cpu: 256,
+      repo: privateEcrRepo,
+      repoTag: "latest",
+      mappedPort: 80,
+      desiredCount: 1,
+      securityGroup:
+        clusterNetworkStack.network.preconfiguredVpcCidrAccessHttpSecurityGroup,
+      taskExecutionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
+      taskRole: clusterConstruct.taskRole,
+      //**** use the following flags ****
+      useServiceDiscovery: true,
+      useServiceConnectProxy: false,
+      serviceDiscoveryNamespace: springbootAppNamespace,
+      DB_URL: "db@serviceIP:onPort",
+      secretsmanagerkey: "secretsmanagerkey_value",
+      EXTERNAL_GET_URL1: `http://backendapi.sbApp-svcCluster1-sb-app-shared-namespace/backend/api/external-api`,
+      EXTERNAL_GET_URL2: `http://backendapi.sbApp-svcCluster1-sb-app-shared-namespace/backend/api/greet`,
+    });*/
+    //using service connect proxy
     const frontendTask2: IQSTask = new QSTaskMain(this, "frontend2", {
       stackName: this.stackName,
       taskName: "frontend2",
@@ -122,12 +203,14 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
         clusterNetworkStack.network.preconfiguredVpcCidrAccessHttpSecurityGroup,
       taskExecutionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
       taskRole: clusterConstruct.taskRole,
+      //**** use the following flags ****
+      useServiceDiscovery: false,
       useServiceConnectProxy: true,
       serviceDiscoveryNamespace: springbootAppNamespace,
       DB_URL: "db@serviceIP:onPort",
       secretsmanagerkey: "secretsmanagerkey_value",
-      EXTERNAL_GET_URL1: `http://backendapi.sbApp-svcCluster1-sb-app-shared-namespace/backend/api/external-api`,
-      EXTERNAL_GET_URL2: `http://backendapi.sbApp-svcCluster1-sb-app-shared-namespace/backend/api/greet`,
+      EXTERNAL_GET_URL1: `http://api-nlb-alb-modular-demo-stack0backendapi:80/backend/api/external-api`,
+      EXTERNAL_GET_URL2: `http://api-nlb-alb-modular-demo-stack0backendapi:80/backend/api/greet`,
     });
     console.log("frontendTask2 added.");
 
@@ -148,14 +231,14 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       backendTask.service,
       true
     );
-    /*appLoadBalancerConstruct.addListenerTarget(
+    appLoadBalancerConstruct.addListenerTarget(
       "frontend1",
       80,
       15,
       5,
       frontendTask1.service,
       false
-    );*/
+    );
     appLoadBalancerConstruct.addListenerTarget(
       "frontend2",
       80,
@@ -231,7 +314,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
           clusterNetworkStack.network
             .preconfiguredVpcCidrAccessRDSPostgressSecurityGroup,
       }
-    );
+    );*/
 
     //Add a queue
     const testQueue = new QSSqsQueueConstruct(
@@ -265,7 +348,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
         notificationQueueName: "com-quickysoft-anu-eventnotification-q",
       }
     );
-    //Add a bucket with a event notification to a queue
+    //Add a bucket with a event bridge enabled to a queue
     const testS3BucketEB = new QSS3BucketConstruct(
       this,
       this.stackName + "com-quickysoft-anu-eventbridge",
@@ -275,6 +358,6 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
         eventBridgeEnabled: true,
         notificationQueueName: "com-quickysoft-anu-eventbridge-q",
       }
-    );*/
+    );
   }
 }
