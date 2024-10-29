@@ -5,6 +5,7 @@ import * as ecs from "aws-cdk-lib/aws-ecs";
 import { IRepository } from "aws-cdk-lib/aws-ecr/lib/repository";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Duration } from "aws-cdk-lib";
+import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 
 export interface QSTaskProps {
   stackName: string;
@@ -27,16 +28,27 @@ export interface QSTaskProps {
   useServiceDiscovery?: boolean;
   useServiceConnectProxy?: boolean;
   serviceDiscoveryNamespace?: servicediscovery.INamespace;
+
+  isAutoscalingEnabled?: boolean;
+  autoscalingMinCapacity?: number;
+  autoscalingMaxCapacity?: number;
+  autoscalingRequestsPerTarget?: number;
+  autoscalingCPUPercentage?: number;
+  autoscalingMemoryPercentage?: number;
 }
 
 export interface IQSTask {
   readonly service: ecs.FargateService;
   readonly taskname: string;
+  readonly props : QSTaskProps;
+
+  applyAutoscaling(targetGroup : elbv2.ApplicationTargetGroup) : boolean;
 }
 
 export class QSTaskMain extends Construct implements IQSTask {
   public readonly service: ecs.FargateService;
   public readonly taskname: string;
+  public readonly props : QSTaskProps;
 
   public constructor(scope: Construct, id: string, props: QSTaskProps) {
     super(scope, id);
@@ -63,6 +75,9 @@ export class QSTaskMain extends Construct implements IQSTask {
       if (props.mappedPort == undefined) {
         props.mappedPort = 8080;
       }
+    }
+    if (props.isAutoscalingEnabled == undefined) {
+      props.isAutoscalingEnabled = false;
     }
 
     this.taskname = props.stackName + props.taskName;
@@ -148,5 +163,30 @@ export class QSTaskMain extends Construct implements IQSTask {
         serviceConnectConfiguration: serviceConnectConfiguration,
       });
     }
+    this.props = props;
+  }
+
+  public applyAutoscaling(targetGroup : elbv2.ApplicationTargetGroup) : boolean {
+    if (
+      this.props.isAutoscalingEnabled &&
+      this.props.autoscalingMinCapacity != undefined &&
+      this.props.autoscalingMaxCapacity != undefined
+    ) {
+      const scalableTarget = this.service.autoScaleTaskCount({
+        minCapacity: this.props.autoscalingMinCapacity,
+        maxCapacity: this.props.autoscalingMaxCapacity,
+      });
+      if (this.props.autoscalingCPUPercentage != undefined) {
+        scalableTarget.scaleOnRequestCount('RequestScaling', {
+          requestsPerTarget: 1000, // Adjust this based on your needs
+          targetGroup: targetGroup,
+        });
+      }
+      if (this.props.autoscalingMemoryPercentage != undefined) {
+      }
+      if (this.props.autoscalingRequestsPerTarget != undefined) {
+      }
+    }
+    return true;
   }
 }

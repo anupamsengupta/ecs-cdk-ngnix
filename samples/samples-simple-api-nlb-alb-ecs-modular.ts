@@ -23,6 +23,10 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+     // Apply tags to the entire stack
+     cdk.Tags.of(this).add("Environment", "Production");
+     cdk.Tags.of(this).add("Owner", "Quickysoft");
+     
     // Create a VPC and overall network
     const clusterNetworkStack = new QSNetworkStack(
       scope,
@@ -109,6 +113,12 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       secretsmanagerkey: "secretsmanagerkey_value",
       EXTERNAL_GET_URL1: `http://localhost/backend/api/external-api`,
       EXTERNAL_GET_URL2: `http://localhost/backend/api/greet`,
+      isAutoscalingEnabled: true,
+      autoscalingCPUPercentage: 80,
+      autoscalingMemoryPercentage: 90,
+      autoscalingRequestsPerTarget: 200, 
+      autoscalingMinCapacity:1,
+      autoscalingMaxCapacity:3
     });
     console.log("backendTask added.");
 
@@ -223,7 +233,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
         open: true,
         securityGroup: ecsSecurityGroup,
       });
-    appLoadBalancerConstruct.addListenerTarget(
+    const backendTarget = appLoadBalancerConstruct.addListenerTarget(
       "backend",
       80,
       15,
@@ -231,7 +241,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       backendTask.service,
       true
     );
-    appLoadBalancerConstruct.addListenerTarget(
+    const frontend1Target = appLoadBalancerConstruct.addListenerTarget(
       "frontend1",
       80,
       15,
@@ -239,7 +249,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       frontendTask1.service,
       false
     );
-    appLoadBalancerConstruct.addListenerTarget(
+    const frontend2Target = appLoadBalancerConstruct.addListenerTarget(
       "frontend2",
       80,
       15,
@@ -247,6 +257,11 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       frontendTask2.service,
       false
     );
+
+    //Apply autoscaling properties.
+    backendTask.applyAutoscaling(backendTarget);
+    frontendTask1.applyAutoscaling(frontend1Target);
+    frontendTask2.applyAutoscaling(frontend2Target);
 
     const nlbConstruct: IQSNetworkLoadBalancer = new QSNetworkLoadBalancerMain(
       this,
@@ -268,9 +283,10 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       targets: [nlbConstruct.appNlb],
     });
 
+    const apiName = "FrontEndSpringBootAppServiceApi";
     // Create an API Gateway
     const api = new apigateway.RestApi(this, "ApiGateway", {
-      restApiName: "FrontEndSpringBootAppServiceApi",
+      restApiName: apiName,
       description:
         "API Gateway to access SpringBootApp service running on ECS Fargate",
     });
@@ -292,10 +308,42 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       },
     });
 
-    api.root.addResource("{proxy+}").addMethod("ANY", rootIntegration, {
+    const items = api.root.addResource("{proxy+}");
+    const rootMethod = items.addMethod("ANY", rootIntegration, {
       requestParameters: {
         "method.request.path.proxy": true, // Enable path proxying
       },
+    });
+
+    const apiKey = api.addApiKey(this.stackName + api + "APIKey", {
+      apiKeyName : this.stackName + api + "APIKey",
+    });
+
+    //Usage plan and API Key
+    const usagePlan = api.addUsagePlan(this.stackName + api + "UsagePlan", {
+      name:  this.stackName + api + "UsagePlan",
+      throttle: {
+        rateLimit : 5,
+        burstLimit : 10,
+      },
+      quota : {
+        limit : 120,
+        period : apigateway.Period.WEEK
+      }
+    });
+    usagePlan.addApiKey(apiKey);
+    
+    usagePlan.addApiStage({
+      stage: api.deploymentStage,
+      throttle: [
+        {
+          method: rootMethod, // Apply throttle to the 'GET' method on 'items'
+          throttle: {
+            rateLimit: 5, // 5 requests per second for this method
+            burstLimit: 10,
+          },
+        },
+      ],
     });
 
     new cdk.CfnOutput(this, "LoadBalancerDNS", {
