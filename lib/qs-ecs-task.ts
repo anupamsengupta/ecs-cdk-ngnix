@@ -177,16 +177,27 @@ export class QSTaskMain extends Construct implements IQSTask {
         maxCapacity: this.props.autoscalingMaxCapacity,
       });
       if (this.props.autoscalingCPUPercentage != undefined) {
+        scalableTarget.scaleOnCpuUtilization("CPUScaling", {
+          targetUtilizationPercent: this.props.autoscalingCPUPercentage,
+          scaleInCooldown: Duration.seconds(60),
+          scaleOutCooldown: Duration.seconds(60),
+        });
+      }
+      if (this.props.autoscalingMemoryPercentage != undefined) {
+        scalableTarget.scaleOnMemoryUtilization("MemoryScaling", {
+          targetUtilizationPercent: this.props.autoscalingMemoryPercentage,
+          scaleInCooldown: Duration.seconds(60),
+          scaleOutCooldown: Duration.seconds(60),
+        });
+      }
+      if (this.props.autoscalingRequestsPerTarget != undefined) {
         scalableTarget.scaleOnRequestCount('RequestScaling', {
           requestsPerTarget: 1000, // Adjust this based on your needs
           targetGroup: targetGroup,
         });
       }
-      if (this.props.autoscalingMemoryPercentage != undefined) {
-      }
-      if (this.props.autoscalingRequestsPerTarget != undefined) {
-      }
+      return true;
     }
-    return true;
+    return false;
   }
 }

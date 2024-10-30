@@ -14,6 +14,7 @@ import {
   IQSNetworkLoadBalancer,
   QSNetworkLoadBalancerMain,
 } from "../lib/qs-ecs-networkloadbalancer";
+import { QSApiGatewayMain } from "../lib/qs-ecs-apigateway";
 import { QSS3BucketConstruct } from "../lib/qs-s3";
 import { QSSqsQueueConstruct } from "../lib/qs-sqs";
 import { QSSnsTopicConstruct } from "../lib/qs-sns";
@@ -91,7 +92,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       EXTERNAL_GET_URL2: `http://localhost/backend/api/greet`,
     });*/
     
-    const backendTask: IQSTask = new QSTaskMain(this, "backend", {
+    const backendTask: QSTaskMain = new QSTaskMain(this, "backend", {
       stackName: this.stackName,
       taskName: "backend",
       cluster: clusterConstruct.cluster,
@@ -149,7 +150,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     console.log("frontendTask1 added.");*/
 
     //using service connect proxy
-    const frontendTask1: IQSTask = new QSTaskMain(this, "frontend1", {
+    const frontendTask1: QSTaskMain = new QSTaskMain(this, "frontend1", {
       stackName: this.stackName,
       taskName: "frontend1",
       cluster: clusterConstruct.cluster,
@@ -199,7 +200,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       EXTERNAL_GET_URL2: `http://backendapi.sbApp-svcCluster1-sb-app-shared-namespace/backend/api/greet`,
     });*/
     //using service connect proxy
-    const frontendTask2: IQSTask = new QSTaskMain(this, "frontend2", {
+    const frontendTask2: QSTaskMain = new QSTaskMain(this, "frontend2", {
       stackName: this.stackName,
       taskName: "frontend2",
       cluster: clusterConstruct.cluster,
@@ -258,6 +259,20 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       false
     );
 
+    //Add tags to ALB target and service tasks as they do not automatically get applied
+    cdk.Tags.of(backendTask).add("Environment", "Production");
+    cdk.Tags.of(backendTask).add("Owner", "Quickysoft");
+    cdk.Tags.of(frontendTask1).add("Environment", "Production");
+    cdk.Tags.of(frontendTask1).add("Owner", "Quickysoft");
+    cdk.Tags.of(frontendTask2).add("Environment", "Production");
+    cdk.Tags.of(frontendTask2).add("Owner", "Quickysoft");
+    cdk.Tags.of(backendTarget).add("Environment", "Production");
+    cdk.Tags.of(backendTarget).add("Owner", "Quickysoft");
+    cdk.Tags.of(frontend1Target).add("Environment", "Production");
+    cdk.Tags.of(frontend1Target).add("Owner", "Quickysoft");
+    cdk.Tags.of(frontend2Target).add("Environment", "Production");
+    cdk.Tags.of(frontend2Target).add("Owner", "Quickysoft");
+
     //Apply autoscaling properties.
     backendTask.applyAutoscaling(backendTarget);
     frontendTask1.applyAutoscaling(frontend1Target);
@@ -313,6 +328,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       requestParameters: {
         "method.request.path.proxy": true, // Enable path proxying
       },
+      apiKeyRequired: true,
     });
 
     const apiKey = api.addApiKey(this.stackName + api + "APIKey", {
@@ -345,6 +361,16 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
         },
       ],
     });
+    
+    //API Gateway construct added but commented as not workign with weired error
+    //Error: Resolution error: ID components may not include unresolved tokens: ${Token[TOKEN.1336]}VpcLink.
+    /*const apiCostruct = new QSApiGatewayMain(this, "Test API Gateway Construct", {
+      apiName: apiName,
+      appNlb: nlbConstruct.appNlb,
+      stackName: this.stackName,
+      integrationHttpMethod: "ANY",
+      apiKeyRequired: true,
+    });*/
 
     new cdk.CfnOutput(this, "LoadBalancerDNS", {
       value: nlbConstruct.appNlb.loadBalancerDnsName,

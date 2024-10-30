@@ -4,60 +4,126 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway";
 
 export interface QSApiGatewayProps {
   stackName: string;
-  appNlb: elbv2.NetworkLoadBalancer
+  apiName: string;
+  appNlb: elbv2.NetworkLoadBalancer;
   integrationHttpMethod: string;
+  apiKeyRequired?: boolean;
 }
 
 export interface IQSApiGateway {
-  readonly restapi : apigateway.RestApi;
+  readonly restapi: apigateway.RestApi;
   readonly apiDelegationIntegration: apigateway.Integration;
   readonly vpcLink: apigateway.VpcLink;
-
-  addParentLevelResource(
-    resourceName: string,
-  ) : apigateway.Resource;
 }
 
-export class QSApiGatewayMain
-  extends Construct implements IQSApiGateway
-{
-  public readonly restapi : apigateway.RestApi;
+export class QSApiGatewayMain extends Construct implements IQSApiGateway {
+  public readonly restapi: apigateway.RestApi;
   public readonly apiDelegationIntegration: apigateway.Integration;
   public readonly vpcLink: apigateway.VpcLink;
 
   public constructor(scope: Construct, id: string, props: QSApiGatewayProps) {
     super(scope, id);
 
-    console.log('this.vpcLink.props.appNlb.loadBalancerFullName - ' + props.appNlb.loadBalancerFullName)
+    if (props.apiKeyRequired == undefined) {
+      props.apiKeyRequired = false;
+    }
+    console.log(
+      "this.vpcLink.props.appNlb.loadBalancerFullName - " +
+        props.appNlb.loadBalancerFullName
+    );
     // Create a VPC Link for API Gateway
-    const vpcLink1 = new apigateway.VpcLink(this, props.appNlb.loadBalancerName + 'VpcLink', {
-      targets: [props.appNlb],
-    });
-    this.vpcLink = vpcLink1;
+    const localVpcLink = new apigateway.VpcLink(
+      this,
+      props.appNlb.loadBalancerName + "VpcLink",
+      {
+        vpcLinkName: props.appNlb.loadBalancerName + "VpcLink",
+        targets: [props.appNlb],
+      }
+    );
+    this.vpcLink = localVpcLink;
 
     // Create GET methods with VPC Link integration for each resource
-    const apiDelegationIntegration1 = new apigateway.Integration({
+    const localApiDelegationIntegration = new apigateway.Integration({
       type: apigateway.IntegrationType.HTTP_PROXY,
       integrationHttpMethod: props.integrationHttpMethod,
+      // The URI always needs to be mentioned in back quotes as below
+      // Single quote doesnt work.
       uri: `http://${props.appNlb.loadBalancerDnsName}/{proxy}`,
       options: {
         connectionType: apigateway.ConnectionType.VPC_LINK,
         vpcLink: this.vpcLink,
+        passthroughBehavior: apigateway.PassthroughBehavior.WHEN_NO_MATCH,
+        requestParameters: {
+          "integration.request.path.proxy": "method.request.path.proxy", // Pass the path to NLB
+        },
       },
     });
-    this.apiDelegationIntegration = apiDelegationIntegration1;
+    this.apiDelegationIntegration = localApiDelegationIntegration;
 
     // Create an API Gateway
-    const restapi1 = new apigateway.RestApi(this, props.stackName + 'ApiGateway', {
-      restApiName: props.stackName + 'ApiGateway',
-      description: 'API Gateway to access the app ' + props.stackName + ' service running on ECS Fargate',
-    });
-    this.restapi = restapi1;
-    console.log('this.vpcLink.vpcLinkId - ' + this.vpcLink.vpcLinkId)
+    const localRestApi = new apigateway.RestApi(
+      this,
+      props.stackName + "ApiGateway",
+      {
+        restApiName: props.stackName + "ApiGateway",
+        description:
+          "API Gateway to access the app " +
+          props.stackName +
+          " service running on ECS Fargate",
+      }
+    );
+    this.restapi = localRestApi;
+    console.log("this.vpcLink.vpcLinkId - " + this.vpcLink.vpcLinkId);
 
+    const items = localRestApi.root.addResource("{proxy+}");
+    const rootMethod = items.addMethod("ANY", localApiDelegationIntegration, {
+      requestParameters: {
+        "method.request.path.proxy": true, // Enable path proxying
+      },
+      apiKeyRequired: props.apiKeyRequired,
+    });
+
+    if (props.apiKeyRequired) {
+      const apiKey = localRestApi.addApiKey(
+        props.stackName + props.apiName + "APIKey",
+        {
+          apiKeyName: props.stackName + props.apiName + "APIKey",
+        }
+      );
+
+      //Usage plan and API Key
+      const usagePlan = localRestApi.addUsagePlan(
+        props.stackName + props.apiName + "UsagePlan",
+        {
+          name: props.stackName + props.apiName + "UsagePlan",
+          throttle: {
+            rateLimit: 5,
+            burstLimit: 10,
+          },
+          quota: {
+            limit: 120,
+            period: apigateway.Period.WEEK,
+          },
+        }
+      );
+      usagePlan.addApiKey(apiKey);
+
+      usagePlan.addApiStage({
+        stage: localRestApi.deploymentStage,
+        throttle: [
+          {
+            method: rootMethod, // Apply throttle to the 'GET' method on 'items'
+            throttle: {
+              rateLimit: 5, // 5 requests per second for this method
+              burstLimit: 10,
+            },
+          },
+        ],
+      });
+    }
   }
 
-  public addParentLevelResource(
+  /*public addParentLevelResource(
     resourceName: string,
   ) : apigateway.Resource {
     // Create REST resources
@@ -72,5 +138,5 @@ export class QSApiGatewayMain
       });
     
     return mainResource;
-  }
+  }*/
 }
