@@ -67,31 +67,6 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       "quickysoft/sample-spring-boot-app"
     );
 
-    //using service discovery
-    /*const backendTask: IQSTask = new QSTaskMain(this, "backend", {
-      stackName: this.stackName,
-      taskName: "backend",
-      cluster: clusterConstruct.cluster,
-      memoryLimitMiB: 512,
-      cpu: 256,
-      repo: privateEcrRepo,
-      repoTag: "latest",
-      mappedPort: 80,
-      desiredCount: 1,
-      securityGroup:
-        clusterNetworkStack.network.preconfiguredVpcCidrAccessHttpSecurityGroup,
-      taskExecutionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
-      taskRole: clusterConstruct.taskRole,
-      //**** use the following flags ****
-      useServiceDiscovery: true,
-      useServiceConnectProxy: false,
-      serviceDiscoveryNamespace: springbootAppNamespace,
-      DB_URL: "db@serviceIP:onPort",
-      secretsmanagerkey: "secretsmanagerkey_value",
-      EXTERNAL_GET_URL1: `http://localhost/backend/api/external-api`,
-      EXTERNAL_GET_URL2: `http://localhost/backend/api/greet`,
-    });*/
-    
     const backendTask: QSTaskMain = new QSTaskMain(this, "backend", {
       stackName: this.stackName,
       taskName: "backend",
@@ -123,32 +98,6 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     });
     console.log("backendTask added.");
 
-    //using service discovery
-    /*const frontendTask1: IQSTask = new QSTaskMain(this, "frontend1", {
-      stackName: this.stackName,
-      taskName: "frontend1",
-      cluster: clusterConstruct.cluster,
-      memoryLimitMiB: 512,
-      cpu: 256,
-      repo: privateEcrRepo,
-      repoTag: "latest",
-      mappedPort: 80,
-      desiredCount: 1,
-      securityGroup:
-        clusterNetworkStack.network.preconfiguredVpcCidrAccessHttpSecurityGroup,
-      taskExecutionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
-      taskRole: clusterConstruct.taskRole,
-      //**** use the following flags ****
-      useServiceDiscovery: true,
-      useServiceConnectProxy: false,
-      serviceDiscoveryNamespace: springbootAppNamespace,
-      DB_URL: "db@serviceIP:onPort",
-      secretsmanagerkey: "secretsmanagerkey_value",
-      EXTERNAL_GET_URL1: `http://backendapi.sbApp-svcCluster1-sb-app-shared-namespace/backend/api/external-api`,
-      EXTERNAL_GET_URL2: `http://backendapi.sbApp-svcCluster1-sb-app-shared-namespace/backend/api/greet`,
-    });
-    console.log("frontendTask1 added.");*/
-
     //using service connect proxy
     const frontendTask1: QSTaskMain = new QSTaskMain(this, "frontend1", {
       stackName: this.stackName,
@@ -175,30 +124,6 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     });
     console.log("frontendTask1 added.");
 
-    //using service discovery
-    /*const frontendTask2: IQSTask = new QSTaskMain(this, "frontend2", {
-      stackName: this.stackName,
-      taskName: "frontend2",
-      cluster: clusterConstruct.cluster,
-      memoryLimitMiB: 512,
-      cpu: 256,
-      repo: privateEcrRepo,
-      repoTag: "latest",
-      mappedPort: 80,
-      desiredCount: 1,
-      securityGroup:
-        clusterNetworkStack.network.preconfiguredVpcCidrAccessHttpSecurityGroup,
-      taskExecutionRole: clusterConstruct.taskExecutionRole, // Set execution role for ECR pull
-      taskRole: clusterConstruct.taskRole,
-      //**** use the following flags ****
-      useServiceDiscovery: true,
-      useServiceConnectProxy: false,
-      serviceDiscoveryNamespace: springbootAppNamespace,
-      DB_URL: "db@serviceIP:onPort",
-      secretsmanagerkey: "secretsmanagerkey_value",
-      EXTERNAL_GET_URL1: `http://backendapi.sbApp-svcCluster1-sb-app-shared-namespace/backend/api/external-api`,
-      EXTERNAL_GET_URL2: `http://backendapi.sbApp-svcCluster1-sb-app-shared-namespace/backend/api/greet`,
-    });*/
     //using service connect proxy
     const frontendTask2: QSTaskMain = new QSTaskMain(this, "frontend2", {
       stackName: this.stackName,

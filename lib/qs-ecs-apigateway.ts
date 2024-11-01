@@ -8,18 +8,17 @@ export interface QSApiGatewayProps {
   appNlb: elbv2.NetworkLoadBalancer;
   integrationHttpMethod: string;
   apiKeyRequired?: boolean;
+  vpcLink: apigateway.VpcLink;
 }
 
 export interface IQSApiGateway {
   readonly restapi: apigateway.RestApi;
   readonly apiDelegationIntegration: apigateway.Integration;
-  readonly vpcLink: apigateway.VpcLink;
 }
 
 export class QSApiGatewayMain extends Construct implements IQSApiGateway {
   public readonly restapi: apigateway.RestApi;
   public readonly apiDelegationIntegration: apigateway.Integration;
-  public readonly vpcLink: apigateway.VpcLink;
 
   public constructor(scope: Construct, id: string, props: QSApiGatewayProps) {
     super(scope, id);
@@ -28,19 +27,9 @@ export class QSApiGatewayMain extends Construct implements IQSApiGateway {
       props.apiKeyRequired = false;
     }
     console.log(
-      "this.vpcLink.props.appNlb.loadBalancerFullName - " +
+      "props.appNlb.loadBalancerFullName - " +
         props.appNlb.loadBalancerFullName
     );
-    // Create a VPC Link for API Gateway
-    const localVpcLink = new apigateway.VpcLink(
-      this,
-      props.appNlb.loadBalancerName + "VpcLink",
-      {
-        vpcLinkName: props.appNlb.loadBalancerName + "VpcLink",
-        targets: [props.appNlb],
-      }
-    );
-    this.vpcLink = localVpcLink;
 
     // Create GET methods with VPC Link integration for each resource
     const localApiDelegationIntegration = new apigateway.Integration({
@@ -51,7 +40,7 @@ export class QSApiGatewayMain extends Construct implements IQSApiGateway {
       uri: `http://${props.appNlb.loadBalancerDnsName}/{proxy}`,
       options: {
         connectionType: apigateway.ConnectionType.VPC_LINK,
-        vpcLink: this.vpcLink,
+        vpcLink: props.vpcLink,
         passthroughBehavior: apigateway.PassthroughBehavior.WHEN_NO_MATCH,
         requestParameters: {
           "integration.request.path.proxy": "method.request.path.proxy", // Pass the path to NLB
@@ -73,7 +62,7 @@ export class QSApiGatewayMain extends Construct implements IQSApiGateway {
       }
     );
     this.restapi = localRestApi;
-    console.log("this.vpcLink.vpcLinkId - " + this.vpcLink.vpcLinkId);
+    console.log("props.vpcLink.vpcLinkId - " + props.vpcLink.vpcLinkId);
 
     const items = localRestApi.root.addResource("{proxy+}");
     const rootMethod = items.addMethod("ANY", localApiDelegationIntegration, {
