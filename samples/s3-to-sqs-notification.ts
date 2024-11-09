@@ -3,7 +3,7 @@ import { Construct } from "constructs";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as s3n from "aws-cdk-lib/aws-s3-notifications";
-import * as iam from 'aws-cdk-lib/aws-iam';
+import * as iam from "aws-cdk-lib/aws-iam";
 
 export class S3ToSqsNotification extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -34,15 +34,20 @@ export class S3ToSqsNotification extends cdk.Stack {
     });
 
     // Grant S3 permission to send messages to SQS by adding permissions to the S3 bucket's policy
-    bucket.addToResourcePolicy(new iam.PolicyStatement({
-        actions: ['sqs:SendMessage'],
+
+    // Grant the necessary permissions to EventBridge to send messages to the SQS queue
+    mainQueue.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        principals: [new iam.ServicePrincipal("events.amazonaws.com")],
+        actions: ["sqs:SendMessage"],
         resources: [mainQueue.queueArn],
-        principals: [new iam.ServicePrincipal('s3.amazonaws.com')],
-      }));
+      })
+    );
 
     // Set up the event notification for the S3 bucket
     bucket.addEventNotification(
-      s3.EventType.OBJECT_CREATED_PUT,
+      s3.EventType.OBJECT_CREATED,
       new s3n.SqsDestination(mainQueue)
     );
   }
