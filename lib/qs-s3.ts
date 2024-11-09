@@ -17,7 +17,7 @@ export interface QSS3BucketProps {
   eventBridgeEnabled?: boolean;
   eventNotificationEnabled?: boolean;
 
-  notificationQueueArn?: string;
+  targetNotificationQueue?: sqs.Queue;
   notificationQueueName?: string;
   notificationQueueVisibilityTO?: number;
   notificationQueueRetentionPeriod?: number;
@@ -46,14 +46,15 @@ export class QSS3BucketConstruct extends Construct implements IQSS3Bucket {
     if (props.eventBridgeEnabled == undefined) {
       props.eventBridgeEnabled = false;
     }
+    if (props.eventNotificationEnabled == undefined) {
+      props.eventNotificationEnabled = false;
+    }
     if (props.notificationQueueVisibilityTO == undefined) {
       props.notificationQueueVisibilityTO = 15;
     }
     if (props.notificationQueueRetentionPeriod == undefined) {
       props.notificationQueueRetentionPeriod = 5;
     }
-    console.log("props.stackName : " + props.stackName);
-    console.log("props.bucketName : " + props.bucketName);
 
     this.bucket = new s3.Bucket(this, props.stackName + props.bucketName, {
       bucketName: props.bucketName,
@@ -65,16 +66,12 @@ export class QSS3BucketConstruct extends Construct implements IQSS3Bucket {
     });
     if (props.eventBridgeEnabled || props.eventNotificationEnabled) {
       if (
-        props.notificationQueueArn != undefined ||
+        props.targetNotificationQueue != undefined ||
         props.notificationQueueName != undefined
       ) {
         let notificationQueue;
-        if (props.notificationQueueArn != undefined) {
-          notificationQueue = sqs.Queue.fromQueueArn(
-            this,
-            props.stackName + props.notificationQueueName,
-            props.notificationQueueArn
-          );
+        if (props.targetNotificationQueue != undefined) {
+          notificationQueue = props.targetNotificationQueue;
         } else {
           notificationQueue = new sqs.Queue(
             this,
@@ -91,12 +88,22 @@ export class QSS3BucketConstruct extends Construct implements IQSS3Bucket {
           );
         }
 
+        // Grant the necessary permissions to EventBridge to send messages to the SQS queue
+        notificationQueue.addToResourcePolicy(
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            principals: [new iam.ServicePrincipal("events.amazonaws.com")],
+            actions: ["sqs:SendMessage"],
+            resources: [notificationQueue.queueArn],
+          })
+        );
+
         if (props.eventBridgeEnabled) {
           // Create an EventBridge rule for S3 bucket events
           const rule = new events.Rule(this, "S3EventRule", {
             eventPattern: {
               source: ["aws.s3"],
-              detailType: ["Object Created"], // You can specify other events like 'Object Removed' here
+              detailType: ["Object Created", "Object Removed"], // You can specify other events like 'Object Removed' here
               detail: {
                 bucket: {
                   name: [this.bucket.bucketName],
@@ -104,27 +111,11 @@ export class QSS3BucketConstruct extends Construct implements IQSS3Bucket {
               },
             },
           });
-
           // Add the SQS queue as the target for the EventBridge rule
           rule.addTarget(new targets.SqsQueue(notificationQueue));
-
-          // Grant the necessary permissions to EventBridge to send messages to the SQS queue
-          notificationQueue.addToResourcePolicy(
-            new iam.PolicyStatement({
-              effect: iam.Effect.ALLOW,
-              principals: [new iam.ServicePrincipal("events.amazonaws.com")],
-              actions: ["sqs:SendMessage"],
-              resources: [notificationQueue.queueArn],
-            })
-          );
         } else {
           this.bucket.addEventNotification(
             s3.EventType.OBJECT_CREATED,
-            new s3Notifications.SqsDestination(notificationQueue)
-          );
-
-          this.bucket.addEventNotification(
-            s3.EventType.OBJECT_REMOVED,
             new s3Notifications.SqsDestination(notificationQueue)
           );
         }

@@ -6,12 +6,13 @@ import * as cdk from "aws-cdk-lib";
 //import { EcsCdkSBAppDirectStackSimple } from '../samples/samples-ecs-cdk-sbapp-stack-direct-alb-apigateway-lambda-2';
 //import {EcsCdkSimpleApiNlbEcsDemoStack} from '../samples/samples-simple-api-nlb-ecs';
 //import {EcsCdkSimpleApiNlbAlbEcsDemoStack} from '../samples/samples-simple-api-nlb-alb-ecs';
-import { EcsCdkSimpleApiNlbAlbEcsModularDemoStack } from "../samples/samples-simple-api-nlb-alb-ecs-modular-uncommented";
+//import { EcsCdkSimpleApiNlbAlbEcsModularDemoStack } from "../samples/samples-simple-api-nlb-alb-ecs-modular-uncommented";
 //import { S3ToSqsNotification } from "../samples/s3-to-sqs-notification";
+import { S3ToSqsNotificationWithConstruct } from "../samples/s3-to-sqs-notification with-construct";
 const app = new cdk.App();
-new EcsCdkSimpleApiNlbAlbEcsModularDemoStack(
+new S3ToSqsNotificationWithConstruct(
   app,
-  "sample1",
+  "sample2",
   {
     env: { region: "us-east-1" },
   }
