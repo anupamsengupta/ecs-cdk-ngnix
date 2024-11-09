@@ -16,10 +16,8 @@ export interface QSTaskProps {
   securityGroup: ec2.ISecurityGroup;
   taskExecutionRole: iam.Role;
   taskRole: iam.Role;
-  DB_URL: string;
-  secretsmanagerkey: string;
-  EXTERNAL_GET_URL1: string;
-  EXTERNAL_GET_URL2: string;
+
+  envParams: {[key:string]: string},
 
   memoryLimitMiB?: number;
   cpu?: number;
@@ -79,6 +77,7 @@ export class QSTaskMain extends Construct implements IQSTask {
     if (props.isAutoscalingEnabled == undefined) {
       props.isAutoscalingEnabled = false;
     }
+    this.props = props;
 
     this.taskname = props.stackName + props.taskName;
     // Create a Fargate task definition for Backend
@@ -98,13 +97,7 @@ export class QSTaskMain extends Construct implements IQSTask {
       containerName: this.taskname,
       image: ecs.ContainerImage.fromEcrRepository(props.repo, props.repoTag), // Specify tag if needed
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: containerName }),
-      environment: {
-        DB_URL: "db@serviceIP:onPort",
-        secretsmanagerkey: "secretsmanagerkey_value",
-        APP_CONTEXT_PATH: "/" + props.taskName,
-        EXTERNAL_GET_URL1: props.EXTERNAL_GET_URL1,
-        EXTERNAL_GET_URL2: props.EXTERNAL_GET_URL2,
-      },
+      environment: props.envParams,
       //portMappings: [{ containerPort: props.mappedPort }],
       //Dont know how to make thsi work!!!!!
       /*healthCheck: {

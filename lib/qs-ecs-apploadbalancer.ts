@@ -11,20 +11,23 @@ export interface QSAppLoadBalancerProps {
   port: number;
   open: boolean;
   securityGroup: ISecurityGroup;
+
+  unhealthyThresholdCount ? : number;
+  healthCheckInterval?: number;
+  timeout?: number;
 }
 
 export interface IQSAppLoadBalancer {
   readonly appAlb: elbv2.ApplicationLoadBalancer;
   readonly applicationListener: elbv2.ApplicationListener;
-  
+  readonly props : QSAppLoadBalancerProps;
+
   addListenerTarget(
     taskname: string,
     port: number,
-    healthCheckInterval: number,
-    timeout: number,
     service: ecs.FargateService,
-    defaultTarget: boolean,
-  ) : elbv2.ApplicationTargetGroup;
+    defaultTarget: boolean
+  ): elbv2.ApplicationTargetGroup;
 }
 
 export class QSAppLoadBalancerMain
@@ -34,6 +37,7 @@ export class QSAppLoadBalancerMain
   public readonly appAlb: elbv2.ApplicationLoadBalancer;
   public readonly applicationListener: elbv2.ApplicationListener;
   priority: number;
+  readonly props : QSAppLoadBalancerProps;
 
   public constructor(
     scope: Construct,
@@ -41,6 +45,19 @@ export class QSAppLoadBalancerMain
     props: QSAppLoadBalancerProps
   ) {
     super(scope, id);
+
+    //add meaningful defaults
+    if (props.unhealthyThresholdCount == undefined) {
+      props.unhealthyThresholdCount = 10;
+    }
+    if (props.healthCheckInterval == undefined) {
+      props.healthCheckInterval = 15;
+    }
+    if (props.timeout == undefined) {
+      props.timeout = 8;
+    }
+    this.props = props;
+
     // Create an Application Load Balancer (ALB)
     this.appAlb = new elbv2.ApplicationLoadBalancer(
       this,
@@ -49,7 +66,7 @@ export class QSAppLoadBalancerMain
         vpc: props.vpc,
         internetFacing: props.internetFacing,
         securityGroup: props.securityGroup,
-      },
+      }
     );
 
     this.applicationListener = this.appAlb.addListener(
@@ -59,46 +76,65 @@ export class QSAppLoadBalancerMain
         open: props.open,
       }
     );
-    console.log('this.appAlb : ' + this.appAlb);
+    console.log("this.appAlb : " + this.appAlb);
     this.priority = 1;
   }
 
   public addListenerTarget(
     taskname: string,
     port: number,
-    healthCheckInterval: number,
-    timeout: number,
     service: ecs.FargateService,
-    defaultTarget: boolean,
-  ) : elbv2.ApplicationTargetGroup {
+    defaultTarget: boolean
+  ): elbv2.ApplicationTargetGroup {
     // Attach the ECS service to the ALB
-    let  appTragetGroup;
-    console.log('this.appAlb : ' + this.appAlb);
-    console.log('this.applicationListener : ' + this.applicationListener);
-    if(defaultTarget) {
-      appTragetGroup = this.applicationListener.addTargets(taskname + 'ListenerTarget', {
-        port: port,
-        targets: [service],
-        healthCheck: {
-          interval: cdk.Duration.seconds(healthCheckInterval),
-          path: "/" + taskname + "/actuator/health",
-          timeout: cdk.Duration.seconds(timeout),
-        },
-      });
-    } else {
-      appTragetGroup = this.applicationListener.addTargets(taskname + 'ListenerTarget', {
-        port: port,
-        targets: [service],
-        conditions: [elbv2.ListenerCondition.pathPatterns(['/' + taskname + '*'])],
-        priority: this.priority++,
-        healthCheck: {
-          interval: cdk.Duration.seconds(healthCheckInterval),
-          path: "/" + taskname + "/actuator/health",
-          timeout: cdk.Duration.seconds(timeout),
-        },
-      });
+    let appTragetGroup;
+
+    if (this.props.unhealthyThresholdCount == undefined) {
+      this.props.unhealthyThresholdCount = 10;
     }
-    console.log('appTragetGroup : ' + appTragetGroup);
+    if (this.props.healthCheckInterval == undefined) {
+      this.props.healthCheckInterval = 15;
+    }
+    if (this.props.timeout == undefined) {
+      this.props.timeout = 8;
+    }
+
+    console.log("this.appAlb : " + this.appAlb);
+    console.log("this.applicationListener : " + this.applicationListener);
+    if (defaultTarget) {
+      appTragetGroup = this.applicationListener.addTargets(
+        taskname + "ListenerTarget",
+        {
+          port: port,
+          targets: [service],
+          healthCheck: {
+            interval: cdk.Duration.seconds(this.props.healthCheckInterval),
+            path: "/" + taskname + "/actuator/health",
+            timeout: cdk.Duration.seconds(this.props.timeout),
+            unhealthyThresholdCount : this.props.unhealthyThresholdCount,
+          },
+        }
+      );
+    } else {
+      appTragetGroup = this.applicationListener.addTargets(
+        taskname + "ListenerTarget",
+        {
+          port: port,
+          targets: [service],
+          conditions: [
+            elbv2.ListenerCondition.pathPatterns(["/" + taskname + "*"]),
+          ],
+          priority: this.priority++,
+          healthCheck: {
+            interval: cdk.Duration.seconds(this.props.healthCheckInterval),
+            path: "/" + taskname + "/actuator/health",
+            timeout: cdk.Duration.seconds(this.props.timeout),
+            unhealthyThresholdCount : this.props.unhealthyThresholdCount,
+          },
+        }
+      );
+    }
+    console.log("appTragetGroup : " + appTragetGroup);
     return appTragetGroup;
   }
 }

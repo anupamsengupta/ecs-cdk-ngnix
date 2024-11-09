@@ -14,10 +14,15 @@ export interface QSNetworkLoadBalancerProps {
   open: boolean;
   applicationListener: ApplicationListener;
   defaulListenerTargetName: string,
+
+  unhealthyThresholdCount ? : number;
+  healthCheckInterval?: number;
+  timeout?: number;
 }
 
 export interface IQSNetworkLoadBalancer {
   readonly appNlb: elbv2.NetworkLoadBalancer;
+  readonly props : QSNetworkLoadBalancerProps;
 }
 
 export class QSNetworkLoadBalancerMain
@@ -25,6 +30,7 @@ export class QSNetworkLoadBalancerMain
   implements IQSNetworkLoadBalancer
 {
   public readonly appNlb: elbv2.NetworkLoadBalancer;
+  readonly props : QSNetworkLoadBalancerProps;
 
   public constructor(
     scope: Construct,
@@ -33,6 +39,18 @@ export class QSNetworkLoadBalancerMain
   ) {
     super(scope, id);
     
+    //add meaningful defaults
+    if (props.unhealthyThresholdCount == undefined) {
+      props.unhealthyThresholdCount = 10;
+    }
+    if (props.healthCheckInterval == undefined) {
+      props.healthCheckInterval = 15;
+    }
+    if (props.timeout == undefined) {
+      props.timeout = 8;
+    }
+    this.props = props;
+
     //Create the NLB
     this.appNlb = new elbv2.NetworkLoadBalancer(this, props.stackName + 'NLB', {
       vpc: props.vpc,
@@ -53,9 +71,10 @@ export class QSNetworkLoadBalancerMain
       targets: [albTarget],
       protocol: elbv2.Protocol.TCP,
       healthCheck: {
-        interval: cdk.Duration.seconds(30),
+        interval: cdk.Duration.seconds(props.healthCheckInterval),
         path: "/" + props.defaulListenerTargetName + "/actuator/health",
-        timeout: cdk.Duration.seconds(10),
+        timeout: cdk.Duration.seconds(props.timeout),
+        unhealthyThresholdCount: props.unhealthyThresholdCount,
       },
     });
     

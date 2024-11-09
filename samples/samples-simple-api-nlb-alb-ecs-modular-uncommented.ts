@@ -67,12 +67,20 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       "quickysoft/sample-spring-boot-app"
     );
 
+    const envParams : {[key:string]: string} = {
+      DB_URL: "db@serviceIP:onPort",
+      secretsmanagerkey: "secretsmanagerkey_value",
+      EXTERNAL_GET_URL1: `http://localhost/backend/api/external-api`,
+      EXTERNAL_GET_URL2: `http://localhost/backend/api/greet`,
+      APP_CONTEXT_PATH: "/backend",
+    };
+
     const backendTask: QSTaskMain = new QSTaskMain(this, "backend", {
       stackName: this.stackName,
       taskName: "backend",
       cluster: clusterConstruct.cluster,
-      memoryLimitMiB: 512,
-      cpu: 256,
+      memoryLimitMiB: 1024,
+      cpu: 512,
       repo: privateEcrRepo,
       repoTag: "latest",
       mappedPort: 80,
@@ -85,10 +93,9 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       useServiceDiscovery: false,
       useServiceConnectProxy: true,
       serviceDiscoveryNamespace: springbootAppNamespace,
-      DB_URL: "db@serviceIP:onPort",
-      secretsmanagerkey: "secretsmanagerkey_value",
-      EXTERNAL_GET_URL1: `http://localhost/backend/api/external-api`,
-      EXTERNAL_GET_URL2: `http://localhost/backend/api/greet`,
+
+      envParams: envParams,
+
       isAutoscalingEnabled: true,
       autoscalingCPUPercentage: 80,
       autoscalingMemoryPercentage: 90,
@@ -98,13 +105,20 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     });
     console.log("backendTask added.");
 
+    const envParamsFE1 : {[key:string]: string} = {
+      DB_URL: "db@serviceIP:onPort",
+      secretsmanagerkey: "secretsmanagerkey_value",
+      EXTERNAL_GET_URL1: `http://api-nlb-alb-modular-demo-stack0backendapi:80/backend/api/external-api`,
+      EXTERNAL_GET_URL2: `http://api-nlb-alb-modular-demo-stack0backendapi:80/backend/api/greet`,
+      APP_CONTEXT_PATH: "/frontend1",
+    };
     //using service connect proxy
     const frontendTask1: QSTaskMain = new QSTaskMain(this, "frontend1", {
       stackName: this.stackName,
       taskName: "frontend1",
       cluster: clusterConstruct.cluster,
-      memoryLimitMiB: 512,
-      cpu: 256,
+      memoryLimitMiB: 1024,
+      cpu: 512,
       repo: privateEcrRepo,
       repoTag: "latest",
       mappedPort: 80,
@@ -117,20 +131,25 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       useServiceDiscovery: false,
       useServiceConnectProxy: true,
       serviceDiscoveryNamespace: springbootAppNamespace,
+
+      envParams: envParamsFE1,
+    });
+    console.log("frontendTask1 added.");
+
+    const envParamsFE2 : {[key:string]: string} = {
       DB_URL: "db@serviceIP:onPort",
       secretsmanagerkey: "secretsmanagerkey_value",
       EXTERNAL_GET_URL1: `http://api-nlb-alb-modular-demo-stack0backendapi:80/backend/api/external-api`,
       EXTERNAL_GET_URL2: `http://api-nlb-alb-modular-demo-stack0backendapi:80/backend/api/greet`,
-    });
-    console.log("frontendTask1 added.");
-
+      APP_CONTEXT_PATH: "/frontend2",
+    };
     //using service connect proxy
     const frontendTask2: QSTaskMain = new QSTaskMain(this, "frontend2", {
       stackName: this.stackName,
       taskName: "frontend2",
       cluster: clusterConstruct.cluster,
-      memoryLimitMiB: 512,
-      cpu: 256,
+      memoryLimitMiB: 1024,
+      cpu: 512,
       repo: privateEcrRepo,
       repoTag: "latest",
       mappedPort: 80,
@@ -143,10 +162,8 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       useServiceDiscovery: false,
       useServiceConnectProxy: true,
       serviceDiscoveryNamespace: springbootAppNamespace,
-      DB_URL: "db@serviceIP:onPort",
-      secretsmanagerkey: "secretsmanagerkey_value",
-      EXTERNAL_GET_URL1: `http://api-nlb-alb-modular-demo-stack0backendapi:80/backend/api/external-api`,
-      EXTERNAL_GET_URL2: `http://api-nlb-alb-modular-demo-stack0backendapi:80/backend/api/greet`,
+
+      envParams: envParamsFE2,
     });
     console.log("frontendTask2 added.");
 
@@ -162,24 +179,18 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     const backendTarget = appLoadBalancerConstruct.addListenerTarget(
       "backend",
       80,
-      15,
-      5,
       backendTask.service,
       true
     );
     const frontend1Target = appLoadBalancerConstruct.addListenerTarget(
       "frontend1",
       80,
-      15,
-      5,
       frontendTask1.service,
       false
     );
     const frontend2Target = appLoadBalancerConstruct.addListenerTarget(
       "frontend2",
       80,
-      15,
-      5,
       frontendTask2.service,
       false
     );

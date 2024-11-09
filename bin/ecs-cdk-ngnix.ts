@@ -11,7 +11,7 @@ import { EcsCdkSimpleApiNlbAlbEcsModularDemoStack } from "../samples/samples-sim
 const app = new cdk.App();
 new EcsCdkSimpleApiNlbAlbEcsModularDemoStack(
   app,
-  "api-nlb-alb-modular-demo-stack0",
+  "sample1",
   {
     env: { region: "us-east-1" },
   }
