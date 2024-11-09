@@ -97,9 +97,10 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       envParams: envParams,
     });*/
     
-    const backendTask: QSTaskMain = new QSTaskMain(this, "backend", {
+    const backendtaskname = "backend";
+    const backendTask: QSTaskMain = new QSTaskMain(this, backendtaskname, {
       stackName: this.stackName,
-      taskName: "backend",
+      taskName: backendtaskname,
       cluster: clusterConstruct.cluster,
       memoryLimitMiB: 1024,
       cpu: 512,
@@ -130,8 +131,8 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     const envParamsFE1 : {[key:string]: string} = {
       DB_URL: "db@serviceIP:onPort",
       secretsmanagerkey: "secretsmanagerkey_value",
-      EXTERNAL_GET_URL1: `http://api-nlb-alb-modular-demo-stack0backendapi:80/backend/api/external-api`,
-      EXTERNAL_GET_URL2: `http://api-nlb-alb-modular-demo-stack0backendapi:80/backend/api/greet`,
+      EXTERNAL_GET_URL1: 'http://' + this.stackName + backendtaskname + 'api:80/backend/api/external-api',
+      EXTERNAL_GET_URL2: 'http://' + this.stackName + backendtaskname + 'api:80/backend/api/greet',
       APP_CONTEXT_PATH: "/frontend1",
     };
 
@@ -186,8 +187,8 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
     const envParamsFE2 : {[key:string]: string} = {
       DB_URL: "db@serviceIP:onPort",
       secretsmanagerkey: "secretsmanagerkey_value",
-      EXTERNAL_GET_URL1: `http://api-nlb-alb-modular-demo-stack0backendapi:80/backend/api/external-api`,
-      EXTERNAL_GET_URL2: `http://api-nlb-alb-modular-demo-stack0backendapi:80/backend/api/greet`,
+      EXTERNAL_GET_URL1: 'http://' + this.stackName + backendtaskname + 'api:80/backend/api/external-api',
+      EXTERNAL_GET_URL2: 'http://' + this.stackName + backendtaskname + 'api:80/backend/api/greet',
       APP_CONTEXT_PATH: "/frontend2",
     };
     //using service discovery
