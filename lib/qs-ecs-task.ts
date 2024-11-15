@@ -6,6 +6,8 @@ import { IRepository } from "aws-cdk-lib/aws-ecr/lib/repository";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Duration } from "aws-cdk-lib";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import * as logs from 'aws-cdk-lib/aws-logs';
+import * as cdk from "aws-cdk-lib";
 
 export interface QSTaskProps {
   stackName: string;
@@ -17,7 +19,7 @@ export interface QSTaskProps {
   taskExecutionRole: iam.Role;
   taskRole: iam.Role;
 
-  envParams: {[key:string]: string},
+  environmentVars: { [key: string]: string };
 
   memoryLimitMiB?: number;
   cpu?: number;
@@ -40,7 +42,7 @@ export interface IQSTask {
   readonly taskname: string;
   readonly props : QSTaskProps;
 
-  applyAutoscaling(targetGroup : elbv2.ApplicationTargetGroup) : boolean;
+  applyAutoscaling(targetGroup: elbv2.ApplicationTargetGroup): void;
 }
 
 export class QSTaskMain extends Construct implements IQSTask {
@@ -93,11 +95,21 @@ export class QSTaskMain extends Construct implements IQSTask {
     );
 
     const containerName = this.taskname + "Container";
+    console.log('LogGroup name : ' + '/ecs/' + containerName + this.taskname + 'LogGroup');
+    const logGroup = new logs.LogGroup(this, containerName + this.taskname + 'LogGroup', {
+      logGroupName: '/ecs/' + containerName + this.taskname + 'LogGroup',
+      retention: logs.RetentionDays.ONE_WEEK, // Set log retention as needed
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // This can be set to RETAIN in production
+    });
+
     const serviceContainer = serviceTaskDefinition.addContainer(containerName, {
       containerName: this.taskname,
       image: ecs.ContainerImage.fromEcrRepository(props.repo, props.repoTag), // Specify tag if needed
-      logging: ecs.LogDrivers.awsLogs({ streamPrefix: containerName }),
-      environment: props.envParams,
+      logging: ecs.LogDriver.awsLogs({
+        streamPrefix: containerName,
+        logGroup: logGroup,
+      }),
+      environment: props.environmentVars,
       //portMappings: [{ containerPort: props.mappedPort }],
       //Dont know how to make thsi work!!!!!
       /*healthCheck: {
@@ -157,9 +169,17 @@ export class QSTaskMain extends Construct implements IQSTask {
       });
     }
     this.props = props;
+
+    console.log("AlbTargetGroupArn : " + props.taskName + 'AlbTargetGroupArn');
+    const targetGroupArn = cdk.Fn.importValue(props.taskName + 'AlbTargetGroupArn');
+    const targetGroup = elbv2.ApplicationTargetGroup.fromTargetGroupAttributes(this, 'ImportedTargetGroup', {
+      targetGroupArn,
+    });
+    this.service.attachToApplicationTargetGroup(targetGroup);
+
   }
 
-  public applyAutoscaling(targetGroup : elbv2.ApplicationTargetGroup) : boolean {
+  public applyAutoscaling(targetGroup: elbv2.ApplicationTargetGroup): void {
     if (
       this.props.isAutoscalingEnabled &&
       this.props.autoscalingMinCapacity != undefined &&
@@ -185,12 +205,10 @@ export class QSTaskMain extends Construct implements IQSTask {
       }
       if (this.props.autoscalingRequestsPerTarget != undefined) {
         scalableTarget.scaleOnRequestCount('RequestScaling', {
-          requestsPerTarget: 1000, // Adjust this based on your needs
+          requestsPerTarget: 100, // Adjust this based on your needs
           targetGroup: targetGroup,
         });
       }
-      return true;
     }
-    return false;
   }
 }

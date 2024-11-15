@@ -13,8 +13,6 @@ export interface QSNetworkLoadBalancerProps {
   port: number;
   open: boolean;
   applicationListener: ApplicationListener;
-  defaulListenerTargetName: string,
-
   unhealthyThresholdCount ? : number;
   healthCheckInterval?: number;
   timeout?: number;
@@ -27,8 +25,7 @@ export interface IQSNetworkLoadBalancer {
 
 export class QSNetworkLoadBalancerMain
   extends Construct
-  implements IQSNetworkLoadBalancer
-{
+  implements IQSNetworkLoadBalancer {
   public readonly appNlb: elbv2.NetworkLoadBalancer;
   readonly props : QSNetworkLoadBalancerProps;
 
@@ -44,7 +41,7 @@ export class QSNetworkLoadBalancerMain
       props.unhealthyThresholdCount = 10;
     }
     if (props.healthCheckInterval == undefined) {
-      props.healthCheckInterval = 15;
+      props.healthCheckInterval = 10;
     }
     if (props.timeout == undefined) {
       props.timeout = 8;
@@ -72,7 +69,7 @@ export class QSNetworkLoadBalancerMain
       protocol: elbv2.Protocol.TCP,
       healthCheck: {
         interval: cdk.Duration.seconds(props.healthCheckInterval),
-        path: "/" + props.defaulListenerTargetName + "/actuator/health",
+        path: "/",
         timeout: cdk.Duration.seconds(props.timeout),
         unhealthyThresholdCount: props.unhealthyThresholdCount,
       },

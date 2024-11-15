@@ -95,7 +95,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       useServiceConnectProxy: true,
       serviceDiscoveryNamespace: springbootAppNamespace,
 
-      envParams: envParams,
+      environmentVars: envParams,
 
       isAutoscalingEnabled: true,
       autoscalingCPUPercentage: 80,
@@ -133,7 +133,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       useServiceConnectProxy: true,
       serviceDiscoveryNamespace: springbootAppNamespace,
 
-      envParams: envParamsFE1,
+      environmentVars: envParamsFE1,
     });
     console.log("frontendTask1 added.");
 
@@ -164,7 +164,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       useServiceConnectProxy: true,
       serviceDiscoveryNamespace: springbootAppNamespace,
 
-      envParams: envParamsFE2,
+      environmentVars: envParamsFE2,
     });
     console.log("frontendTask2 added.");
 
@@ -181,19 +181,16 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
       "backend",
       80,
       backendTask.service,
-      true
     );
     const frontend1Target = appLoadBalancerConstruct.addListenerTarget(
       "frontend1",
       80,
       frontendTask1.service,
-      false
     );
     const frontend2Target = appLoadBalancerConstruct.addListenerTarget(
       "frontend2",
       80,
       frontendTask2.service,
-      false
     );
 
     //Add tags to ALB target and service tasks as they do not automatically get applied
@@ -225,7 +222,6 @@ export class EcsCdkSimpleApiNlbAlbEcsModularDemoStack extends cdk.Stack {
         port: 80,
         open: true,
         applicationListener: appLoadBalancerConstruct.applicationListener,
-        defaulListenerTargetName: "backend",
       }
     );
 

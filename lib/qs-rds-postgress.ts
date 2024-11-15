@@ -1,6 +1,5 @@
 import { Construct } from "constructs";
 import * as cdk from "aws-cdk-lib";
-import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
@@ -31,11 +30,11 @@ export interface QSRdsPostgresProps {
 }
 
 export interface IQSRdsPostgres {
-  readonly q: sqs.Queue;
+  readonly iDb: rds.IDatabaseInstance;
 }
 
 export class QSRdsPostgresConstruct extends Construct implements IQSRdsPostgres {
-  public readonly q: sqs.Queue;
+  public readonly iDb: rds.IDatabaseInstance;
 
   public constructor(scope: Construct, id: string, props: QSRdsPostgresProps) {
     super(scope, id);
@@ -81,8 +80,8 @@ export class QSRdsPostgresConstruct extends Construct implements IQSRdsPostgres 
     }
 
     // Create a secret to store the RDS database credentials
-    const dbCredentialsSecret = new secretsmanager.Secret(this, props.stackName + props.databaseName + 'DBCredentialsSecret', {
-      secretName: props.stackName + props.databaseName + 'DBCredentialsSecret',
+    const dbCredentialsSecret = new secretsmanager.Secret(this, props.stackName + props.databaseName + 'DBSecret', {
+      secretName: props.stackName + "-" + props.databaseName + '-DBSecret',
       generateSecretString: {
         secretStringTemplate: JSON.stringify({
           username : props.adminUser,
@@ -94,7 +93,7 @@ export class QSRdsPostgresConstruct extends Construct implements IQSRdsPostgres 
     });
 
     // Create the RDS PostgreSQL instance inside the private subnets
-    const rdsInstance = new rds.DatabaseInstance(this, props.stackName + props.databaseName, {
+    const rdsInstance = new rds.DatabaseInstance(this, props.databaseName, {
       databaseName : props.databaseName,
       engine: rds.DatabaseInstanceEngine.postgres({
         version: props.postgresEngineVersion, // Specify PostgreSQL version
@@ -114,6 +113,7 @@ export class QSRdsPostgresConstruct extends Construct implements IQSRdsPostgres 
       backupRetention: props.backupRetention, // Retain backups for 7 days
       removalPolicy: props.removalPolicy, // Optional: Automatically delete the database when stack is destroyed (use RETAIN for production)
     });
+    this.iDb = rdsInstance;
 
     // Output the RDS endpoint and secret ARN
     new cdk.CfnOutput(this, 'RDSInstanceEndpoint', {

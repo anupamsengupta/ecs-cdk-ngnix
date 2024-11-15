@@ -12,7 +12,7 @@ export interface QSAppLoadBalancerProps {
   open: boolean;
   securityGroup: ISecurityGroup;
 
-  unhealthyThresholdCount ? : number;
+  unhealthyThresholdCount?: number;
   healthCheckInterval?: number;
   timeout?: number;
 }
@@ -20,24 +20,26 @@ export interface QSAppLoadBalancerProps {
 export interface IQSAppLoadBalancer {
   readonly appAlb: elbv2.ApplicationLoadBalancer;
   readonly applicationListener: elbv2.ApplicationListener;
-  readonly props : QSAppLoadBalancerProps;
+  readonly props: QSAppLoadBalancerProps;
 
   addListenerTarget(
     taskname: string,
     port: number,
     service: ecs.FargateService,
-    defaultTarget: boolean
   ): elbv2.ApplicationTargetGroup;
+  addListenerTargetBasedOnPath(
+    taskname: string,
+    port: number,
+  ): void;
 }
 
 export class QSAppLoadBalancerMain
   extends Construct
-  implements IQSAppLoadBalancer
-{
+  implements IQSAppLoadBalancer {
   public readonly appAlb: elbv2.ApplicationLoadBalancer;
   public readonly applicationListener: elbv2.ApplicationListener;
   priority: number;
-  readonly props : QSAppLoadBalancerProps;
+  readonly props: QSAppLoadBalancerProps;
 
   public constructor(
     scope: Construct,
@@ -51,7 +53,7 @@ export class QSAppLoadBalancerMain
       props.unhealthyThresholdCount = 10;
     }
     if (props.healthCheckInterval == undefined) {
-      props.healthCheckInterval = 15;
+      props.healthCheckInterval = 10;
     }
     if (props.timeout == undefined) {
       props.timeout = 8;
@@ -73,7 +75,11 @@ export class QSAppLoadBalancerMain
       props.stackName + "Listener",
       {
         port: 80,
-        open: props.open,
+        //open: props.open,
+        defaultAction : elbv2.ListenerAction.fixedResponse(200, {
+          contentType: "text/plain",
+          messageBody: '{status:"up"}'
+        })
       }
     );
     console.log("this.appAlb : " + this.appAlb);
@@ -83,9 +89,49 @@ export class QSAppLoadBalancerMain
   public addListenerTarget(
     taskname: string,
     port: number,
-    service: ecs.FargateService,
-    defaultTarget: boolean
+    service: ecs.FargateService
   ): elbv2.ApplicationTargetGroup {
+    // Attach the ECS service to the ALB
+
+    if (this.props.unhealthyThresholdCount == undefined) {
+      this.props.unhealthyThresholdCount = 10;
+    }
+    if (this.props.healthCheckInterval == undefined) {
+      this.props.healthCheckInterval = 10;
+    }
+    if (this.props.timeout == undefined) {
+      this.props.timeout = 8;
+    }
+
+    // Attach the ECS service to the ALB
+    console.log("this.appAlb : " + this.appAlb);
+    console.log("this.applicationListener : " + this.applicationListener);
+    const appTragetGroup = this.applicationListener.addTargets(
+      taskname + "ListenerTarget",
+      {
+        port: port,
+        targets: [service],
+        conditions: [
+          elbv2.ListenerCondition.pathPatterns(["/" + taskname + "*"]),
+        ],
+        priority: this.priority++,
+        healthCheck: {
+          interval: cdk.Duration.seconds(this.props.healthCheckInterval),
+          path: "/" + taskname + "/actuator/health",
+          timeout: cdk.Duration.seconds(this.props.timeout),
+          unhealthyThresholdCount: this.props.unhealthyThresholdCount,
+        },
+      }
+    );
+    console.log("appTragetGroup : " + appTragetGroup);
+    return appTragetGroup;
+  }
+
+  public addListenerTargetBasedOnPath(
+    taskname: string,
+    port: number,
+  ): void {
+
     // Attach the ECS service to the ALB
     let appTragetGroup;
 
@@ -101,40 +147,35 @@ export class QSAppLoadBalancerMain
 
     console.log("this.appAlb : " + this.appAlb);
     console.log("this.applicationListener : " + this.applicationListener);
-    if (defaultTarget) {
-      appTragetGroup = this.applicationListener.addTargets(
-        taskname + "ListenerTarget",
-        {
-          port: port,
-          targets: [service],
-          healthCheck: {
-            interval: cdk.Duration.seconds(this.props.healthCheckInterval),
-            path: "/" + taskname + "/actuator/health",
-            timeout: cdk.Duration.seconds(this.props.timeout),
-            unhealthyThresholdCount : this.props.unhealthyThresholdCount,
-          },
-        }
-      );
-    } else {
-      appTragetGroup = this.applicationListener.addTargets(
-        taskname + "ListenerTarget",
-        {
-          port: port,
-          targets: [service],
-          conditions: [
-            elbv2.ListenerCondition.pathPatterns(["/" + taskname + "*"]),
-          ],
-          priority: this.priority++,
-          healthCheck: {
-            interval: cdk.Duration.seconds(this.props.healthCheckInterval),
-            path: "/" + taskname + "/actuator/health",
-            timeout: cdk.Duration.seconds(this.props.timeout),
-            unhealthyThresholdCount : this.props.unhealthyThresholdCount,
-          },
-        }
-      );
-    }
-    console.log("appTragetGroup : " + appTragetGroup);
-    return appTragetGroup;
+    // Create Target Group for ECS
+    const targetGroup = new elbv2.ApplicationTargetGroup(this, taskname + 'TargetGroup', {
+      vpc: this.props.vpc,
+      port: port,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      targetType: elbv2.TargetType.IP,
+      healthCheck: {
+        interval: cdk.Duration.seconds(this.props.healthCheckInterval),
+        path: "/" + taskname + "/actuator/health",
+        timeout: cdk.Duration.seconds(this.props.timeout),
+        unhealthyThresholdCount: this.props.unhealthyThresholdCount,
+      },
+    });
+
+    // Add Target Group to Listener
+    this.applicationListener.addTargetGroups(taskname + 'EcsServiceTargetGroup', {
+      targetGroups: [targetGroup],
+      conditions: [
+        elbv2.ListenerCondition.pathPatterns(["/" + taskname + "*"]),
+      ],
+      priority: this.priority++,
+    });
+
+    // Export Target Group ARN
+    const targetGroupArn = targetGroup.targetGroupArn;
+    new cdk.CfnOutput(this, taskname + 'TargetGroupArnExport', {
+      value: targetGroupArn,
+      exportName: taskname + 'AlbTargetGroupArn', // Name to be used in import
+    });
+
   }
 }

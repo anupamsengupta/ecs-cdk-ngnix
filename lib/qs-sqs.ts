@@ -26,19 +26,19 @@ export class QSSqsQueueConstruct extends Construct implements IQSSqsQueue {
   public constructor(scope: Construct, id: string, props: QSSqsQueueProps) {
     super(scope, id);
     if (props.deliveryDelay == undefined) {
-      props.deliveryDelay = cdk.Duration.seconds(5);
+      props.deliveryDelay = cdk.Duration.seconds(2);
     }
     if (props.maxMessageSizeBytes == undefined) {
       props.maxMessageSizeBytes = 1 * 1024;
     }
     if (props.receiveMessageWaitTime == undefined) {
-      props.receiveMessageWaitTime = cdk.Duration.seconds(5);
+      props.receiveMessageWaitTime = cdk.Duration.seconds(2);
     }
     if (props.retentionPeriod == undefined) {
       props.retentionPeriod = cdk.Duration.days(5);
     }
     if (props.visibilityTimeout == undefined) {
-      props.deliveryDelay = cdk.Duration.minutes(15);
+      props.visibilityTimeout = cdk.Duration.minutes(15);
     }
     if (props.maxReceiveCount == undefined) {
       props.maxReceiveCount = 1;

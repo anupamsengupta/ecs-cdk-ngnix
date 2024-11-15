@@ -80,6 +80,15 @@ export class QSClusterMain extends Construct implements IQSCluster {
     this.taskRole.addManagedPolicy(
       iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonRDSDataFullAccess")
     );
+    this.taskRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AmazonEC2RoleforSSM")
+    );
+    this.taskRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("SecretsManagerReadWrite")
+    );
+    this.taskRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMFullAccess")
+    );
     
   }
 
