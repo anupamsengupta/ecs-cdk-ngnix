@@ -32,14 +32,14 @@ export class EcsCdkSimpleApiNlbAlbEcsModularStackwiseParent extends cdk.Stack {
         const vpc: ec2.IVpc = clusterNetworkStack.network.vpc;
         let namespace = "sb-app-shared-namespace";
         //Create the cluster, roles and namespaces
-        const clusterConstruct = new QSClusterMain(this, "sb-app-cluster2", {
-            serviceClusterName: "svcCluster2",
+        const clusterConstruct = new QSClusterMain(this, "sb-app-cluster", {
+            serviceClusterName: "svcCluster",
             network: clusterNetworkStack.network,
-            stackName: "sbApp2",
+            stackName: "sbApp",
             serviceDiscoveryNamespace: namespace,
         });
 
-        const resourceStack = new ResourceStack(scope, "ResourceStack2", {
+        const resourceStack = new ResourceStack(this, "ResourceStack", {
             env: {
                 region: this.region,
             },
@@ -48,7 +48,19 @@ export class EcsCdkSimpleApiNlbAlbEcsModularStackwiseParent extends cdk.Stack {
             stackName: "ResourceStack",
         });
 
-        const backendTaskStk = new BackendStack(scope, "backendStack2", {
+        const apiStack = new APIStack(this, "APIStack", {
+            env: {
+                region: this.region,
+            },
+            clusterConstruct: clusterConstruct,
+            clusterNetworkStack: clusterNetworkStack,
+            stackName: "APIStack",
+            backendService: "backend",
+            frontend1Service: "frontend1",
+            frontend2Service: "frontend2",
+        });
+
+        const backendTaskStk = new BackendStack(this, "backend", {
             env: {
                 region: this.region,
             },
@@ -58,7 +70,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularStackwiseParent extends cdk.Stack {
             stackName: "backend",
         });
 
-        const frontendTaskStk1 = new FrontendStack(scope, "frontend1Stack2", {
+        const frontendTaskStk1 = new FrontendStack(this, "frontend1", {
             env: {
                 region: this.region,
             },
@@ -68,7 +80,7 @@ export class EcsCdkSimpleApiNlbAlbEcsModularStackwiseParent extends cdk.Stack {
             stackName: "frontend1",
         });
 
-        const frontendTaskStk2 = new FrontendStack(scope, "frontend2Stack2", {
+        const frontendTaskStk2 = new FrontendStack(this, "frontend2", {
             env: {
                 region: this.region,
             },
@@ -76,21 +88,6 @@ export class EcsCdkSimpleApiNlbAlbEcsModularStackwiseParent extends cdk.Stack {
             clusterNetworkStack: clusterNetworkStack,
             contextPath: "frontend2",
             stackName: "frontend2",
-        });
-
-        const apiStack = new APIStack(scope, "APIStack2", {
-            env: {
-                region: this.region,
-            },
-            clusterConstruct: clusterConstruct,
-            clusterNetworkStack: clusterNetworkStack,
-            stackName: "APIStack2",
-            backendService: "backend",
-            frontend1Service: "frontend1",
-            frontend2Service: "frontend2",
-            //backendStack: backendTaskStk,
-            //frontendStack1: frontendTaskStk1,
-            //frontendStack2: frontendTaskStk2,
         });
 
     }

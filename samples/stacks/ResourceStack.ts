@@ -28,7 +28,7 @@ export class ResourceStack extends cdk.Stack {
         );
 
         //Add a sns topic
-        const snsQueueConstruct = new QSSnsTopicConstruct(
+        const snsTopicConstruct = new QSSnsTopicConstruct(
             this,
             "com-quickysoft-anu-test-14102024",
             {

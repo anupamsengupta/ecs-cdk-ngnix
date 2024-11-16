@@ -67,14 +67,14 @@ export class FrontendStack extends cdk.Stack {
         const privateEcrRepo = ecr.Repository.fromRepositoryName(
             this,
             "privateEcrRepo",
-            "sample-spring-boot-app"
+            "quickysoft/sample-spring-boot-app"
         );
 
         const envParams: { [key: string]: string } = {
             DB_URL: "db@serviceIP:onPort",
             secretsmanagerkey: "secretsmanagerkey_value",
-            EXTERNAL_GET_URL1: `http://localhost/backend/api/external-api`,
-            EXTERNAL_GET_URL2: `http://localhost/backend/api/greet`,
+            EXTERNAL_GET_URL1: 'http://' + 'backend' + 'api/backend/api/external-api',
+            EXTERNAL_GET_URL2: 'http://' + 'backend' + 'api/backend/api/greet',
             APP_CONTEXT_PATH: "/" + frontendProps.contextPath,
         };
 

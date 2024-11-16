@@ -67,7 +67,7 @@ export class BackendStack extends cdk.Stack {
         const privateEcrRepo = ecr.Repository.fromRepositoryName(
             this,
             "privateEcrRepo",
-            "sample-spring-boot-app"
+            "quickysoft/sample-spring-boot-app"
         );
 
         const envParams: { [key: string]: string } = {

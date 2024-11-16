@@ -152,8 +152,8 @@ export class QSTaskMain extends Construct implements IQSTask {
           {
             portMappingName: props.stackName + props.taskName + "-app-port", // Name of the port mapping used in the container
             port: props.mappedPort, // Port on the container
-            discoveryName: props.stackName + props.taskName + "-app", // Discovery name for service connect
-            dnsName: props.stackName + props.taskName + "api",
+            discoveryName: props.taskName + "-app", // Discovery name for service connect
+            dnsName: props.taskName + "api",
             //idleTimeout: Duration.minutes(10), //cannot be set for TCP
             //perRequestTimeout: Duration.minutes(10), //cannot be set for TCP
           },
