@@ -4,19 +4,19 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
-import { QSNetworkStack } from "./qs-network-stack";
+import { QSNetworkStack } from "../lib/qs-network-stack";
 import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery'; // Import Cloud Map
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ecr from 'aws-cdk-lib/aws-ecr';  // Import ECR repository
 
-export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
+export class EcsCdkSimpleApiNlbEcsDemoStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     // Create a VPC and overall network
-    const networkClusterStack = new QSNetworkStack(
+    const networkStack = new QSNetworkStack(
       scope,
-      "ecsNetworkClusterStackName",
+      "ecsNetworkStackName1",
       {
         env: {
           region: "us-east-1",
@@ -26,7 +26,7 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
       }
     );
 
-    const vpc: ec2.IVpc = networkClusterStack.network.vpc;
+    const vpc: ec2.IVpc = networkStack.network.vpc;
     // Create an ECS cluster
     const cluster = new ecs.Cluster(this, "Test-ECS-Cluster", {
       vpc: vpc,
@@ -48,20 +48,9 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
     // Allow inbound traffic from the NLB on port 80
     ecsSecurityGroup.addIngressRule(
       ec2.Peer.ipv4(vpc.vpcCidrBlock),
-      ec2.Port.tcp(8080),
+      ec2.Port.tcp(80),
       "Allow traffic from NLB"
     );
-
-    ecsSecurityGroup.addIngressRule(
-      ec2.Peer.ipv4(vpc.vpcCidrBlock),
-      ec2.Port.tcp(8081),
-      "Allow traffic from NLB"
-    );
-
-    /*
-    const externalEcrImage = ecs.ContainerImage.fromRegistry(
-      '870912676422.dkr.ecr.us-east-1.amazonaws.com/quickysoft/sample-spring-boot-app:latest');
-    */
 
     const privateEcrRepo = ecr.Repository.fromRepositoryName(
       this, 
@@ -75,7 +64,7 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
 
     // Attach AmazonECSTaskExecutionRolePolicy for ECR image pull permissions
     taskExecutionRole.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonECSTaskExecutionRolePolicy')
+      iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonECS_FullAccess')
     );
 
     // Create a Fargate task definition for Backend
@@ -94,31 +83,33 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
       //image: externalEcrImage,
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "backend" }),
       environment: {
+        APP_CONTEXT_PATH: "/backend",
         DB_URL: "db@serviceIP:onPort",
         secretsmanagerkey: "secretsmanagerkey_value",
       },
     });
 
     backendContainer.addPortMappings({
-      containerPort: 8080,
+      containerPort: 80,
     });
 
     // Create a Fargate service for Backend
-    const backendService = new ecs.FargateService(this, "BackendService", {
+    const backendService = new ecs.FargateService(this, "backendService", {
       cluster,
       taskDefinition: backendTaskDefinition,
       desiredCount: 1,
+      securityGroups: [ecsSecurityGroup],
       cloudMapOptions: {
-        name: 'backend-api',
+        name: 'backendapi',
         cloudMapNamespace: cloudmapNamespace
       },
     });
 
 
-      // Create a Fargate task definition
-    const frontendTaskDefinition = new ecs.FargateTaskDefinition(
+    // Create a Fargate task definition
+    const frontend1TaskDefinition = new ecs.FargateTaskDefinition(
       this,
-      "frontendTaskDef",
+      "frontend1TaskDef",
       {
         memoryLimitMiB: 512,
         cpu: 256,
@@ -126,27 +117,33 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
       },
     );
 
-    const frontendAppContainer = frontendTaskDefinition.addContainer("sampleSBApp", {
+    const frontend1AppContainer = frontend1TaskDefinition.addContainer("frontend1Service", {
       image: ecs.ContainerImage.fromEcrRepository(privateEcrRepo, 'latest'), // Specify tag if needed
       //image: externalEcrImage,
-      logging: ecs.LogDrivers.awsLogs({ streamPrefix: "frontend" }),
+      logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'frontend1' }),
       environment: {
-        EXTERNAL_GET_URL: `http://backend-api.ecsnamespace/api/get-external-data`,
+        APP_CONTEXT_PATH: '/frontend1',
+        DB_URL: "db@serviceIP:onPort",
+        secretsmanagerkey: "secretsmanagerkey_value",
+        EXTERNAL_GET_URL1:
+          "http://backendapi.ecsnamespace/api/greet",
+        EXTERNAL_GET_URL2:
+          "http://backendapi.ecsnamespace/api/external-api",
       },
     });
 
-    frontendAppContainer.addPortMappings({
-      containerPort: 8081,
+    frontend1AppContainer.addPortMappings({
+      containerPort: 80,
     });
 
     // Create a Fargate service
-    const frontendAppService = new ecs.FargateService(this, "Service", {
+    const frontend1AppService = new ecs.FargateService(this, "frontend1Service", {
       cluster,
-      taskDefinition: frontendTaskDefinition,
+      taskDefinition: frontend1TaskDefinition,
       desiredCount: 1,
       securityGroups: [ecsSecurityGroup],
       cloudMapOptions: {
-        name: 'frontend-api',
+        name: 'frontend1api',
         cloudMapNamespace: cloudmapNamespace
       },
     });
@@ -161,10 +158,9 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
       port: 80,
     });
 
-    listener.addTargets("ECS", {
-      port: 8081,
-      targets: [frontendAppService],
-      //preserveClientIp: true,
+    listener.addTargets("EcsTg", {
+      port: 80,
+      targets: [frontend1AppService],
     });
 
     // Create a VPC Link for API Gateway
@@ -174,50 +170,30 @@ export class EcsCdkNgnixStackVPCLinkAndNLB extends cdk.Stack {
 
     // Create an API Gateway
     const api = new apigateway.RestApi(this, "ApiGateway", {
-      restApiName: "NginxServiceApi",
-      description: "API Gateway to access Nginx service running on ECS Fargate",
+      restApiName: "FrontEndSpringBootAppServiceApi",
+      description: "API Gateway to access SpringBootApp service running on ECS Fargate",
     });
-
-    // Create GET methods with VPC Link integration for each resource
-    const integration = new apigateway.Integration({
-      type: apigateway.IntegrationType.HTTP_PROXY,
-      integrationHttpMethod: "GET",
-      uri: `http://${nlb.loadBalancerDnsName}`,
-      options: {
-        connectionType: apigateway.ConnectionType.VPC_LINK,
-        vpcLink,
-      },
-    });
-
-    // Create REST resources
-    const apiResource = api.root.addResource("api");
-    const greetResource = apiResource.addResource("greet");
-    const externalApiResource = apiResource.addResource("external-api");
-    const getExternalApiResource = apiResource.addResource("get-external-data");
-
-    const actuatorResource = api.root.addResource("actuator");
-    const healthResource = api.root.addResource("health");
-
-    greetResource.addMethod("GET", integration);
-    externalApiResource.addMethod("GET", integration);
-    getExternalApiResource.addMethod("GET", integration);
-
-    actuatorResource.addMethod("GET", integration);
-    healthResource.addMethod("GET", integration);
 
     // Add a root resource level health check
-
     const rootIntegration = new apigateway.Integration({
       type: apigateway.IntegrationType.HTTP_PROXY,
-      integrationHttpMethod: "GET",
-      uri: `http://${nlb.loadBalancerDnsName}`,
+      integrationHttpMethod: "ANY",
+      uri: `http://${nlb.loadBalancerDnsName}/{proxy}`,
       options: {
         connectionType: apigateway.ConnectionType.VPC_LINK,
         vpcLink,
+        passthroughBehavior: apigateway.PassthroughBehavior.WHEN_NO_MATCH,
+        requestParameters: {
+          'integration.request.path.proxy': 'method.request.path.proxy'  // Pass the path to NLB
+        }
       },
     });
 
-    api.root.addMethod("GET", rootIntegration);
+    api.root.addResource('{proxy+}').addMethod('ANY', rootIntegration, {
+      requestParameters: {
+        'method.request.path.proxy': true  // Enable path proxying
+      }
+    });
 
     new cdk.CfnOutput(this, "LoadBalancerDNS", {
       value: nlb.loadBalancerDnsName,
