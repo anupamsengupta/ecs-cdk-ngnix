@@ -16,8 +16,8 @@ export interface QSTaskProps {
   repo: IRepository;
   repoTag: string;
   securityGroup: ec2.ISecurityGroup;
-  taskExecutionRole: iam.Role;
-  taskRole: iam.Role;
+  taskExecutionRole: iam.IRole;
+  taskRole: iam.IRole;
 
   environmentVars: { [key: string]: string };
 

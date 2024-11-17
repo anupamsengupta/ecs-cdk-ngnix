@@ -6,6 +6,7 @@ import * as ecr from "aws-cdk-lib/aws-ecr"; // Import ECR repository
 import { IRepository } from "aws-cdk-lib/aws-ecr/lib/repository";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { IQSNetwork } from "./qs-network";
+import * as cdk from "aws-cdk-lib";
 
 export interface QSClusterProps {
   stackName: string;
@@ -34,24 +35,24 @@ export class QSClusterMain extends Construct implements IQSCluster {
     const vpc: ec2.IVpc = props.network.vpc;
 
     // Create an ECS cluster
-    this.cluster = new ecs.Cluster(this, props.stackName + props.serviceClusterName, {
-      clusterName: props.stackName + props.serviceClusterName,
+    this.cluster = new ecs.Cluster(this, props.serviceClusterName, {
+      clusterName: props.serviceClusterName,
       vpc: vpc,
     });
 
     // Create a Cloud Map namespace for service discovery
     this.appNamespace = new servicediscovery.PrivateDnsNamespace(
       this,
-      props.stackName + "-" + props.serviceClusterName + "-" + props.serviceDiscoveryNamespace,
+      props.serviceClusterName + "-" + props.serviceDiscoveryNamespace,
       {
-        name: props.stackName + "-" + props.serviceClusterName + "-" + props.serviceDiscoveryNamespace,
+        name: props.serviceClusterName + "-" + props.serviceDiscoveryNamespace,
         vpc: vpc,
       }
     );
 
     // Task Execution Role with AmazonECSTaskExecutionRolePolicy attached
     this.taskExecutionRole = new iam.Role(this, props.stackName + props.serviceClusterName + 'TaskExecutionRole', {
-      roleName: props.stackName + props.serviceClusterName + 'TaskExecutionRole',
+      roleName: props.serviceClusterName + 'TaskExecutionRole',
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
     });
     // Attach AmazonECSTaskExecutionRolePolicy for ECR image pull permissions
@@ -61,7 +62,7 @@ export class QSClusterMain extends Construct implements IQSCluster {
 
     // Task Execution Role with AmazonS3FullAccess attached
     this.taskRole = new iam.Role(this, props.stackName + props.serviceClusterName + 'TaskRole', {
-      roleName: props.stackName + props.serviceClusterName + 'TaskRole',
+      roleName: props.serviceClusterName + 'TaskRole',
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
     });
     // Attach AmazonS3FullAccess for ECR image pull permissions
@@ -90,6 +91,17 @@ export class QSClusterMain extends Construct implements IQSCluster {
       iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMFullAccess")
     );
     
+    // Export Target Group ARN
+    const taskRoleArn = this.taskRole.roleArn;
+    new cdk.CfnOutput(this, this.taskRole.roleName, {
+      value: taskRoleArn,
+      exportName: this.taskRole.roleName, // Name to be used in import
+    });
+    const taskExecutionRoleArn = this.taskExecutionRole.roleArn;
+    new cdk.CfnOutput(this, this.taskExecutionRole.roleName, {
+      value: taskExecutionRoleArn,
+      exportName: this.taskExecutionRole.roleName, // Name to be used in import
+    });
   }
 
   public getRepo(scope: Construct, id: string, repoName: string) : IRepository {

@@ -64,6 +64,12 @@ export class FrontendStack extends cdk.Stack {
             iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMFullAccess")
         );
 
+        /* This did not work need to check why so as to remove duplicate creation of roles.*/
+        /*const taskRoleArn = cdk.Fn.importValue(frontendProps.clusterConstruct.taskRole.roleName);
+        const taskRole = iam.Role.fromRoleArn(this, 'ImportedTaskRole', taskRoleArn, {});
+        const taskExecutionRoleArn = cdk.Fn.importValue(frontendProps.clusterConstruct.taskExecutionRole.roleName);
+        const taskExecutionRole = iam.Role.fromRoleArn(this, 'ImportedTaskExecutionRole', taskRoleArn, {});*/
+
         const privateEcrRepo = ecr.Repository.fromRepositoryName(
             this,
             "privateEcrRepo",
